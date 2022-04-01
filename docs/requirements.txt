@@ -1,6 +1,6 @@
 # The requirements, without a version number, hopefully that works
 pandas==1.4.1
-scipy==1.7.3
+scipy==1.8.0
 numpy==1.22.1
 astropy==5.0.1
 wget==3.2
