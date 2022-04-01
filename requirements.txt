@@ -1,4 +1,4 @@
-pandas==1.4.0
+pandas==1.4.1
 scipy==1.7.3
 numpy==1.22.1
 astropy==5.0.1
