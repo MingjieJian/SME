@@ -535,7 +535,7 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
         # We over exaggerate the weights on the top of the spectrum
         # this works well to determine the continuum
         # assuming that there is something there
-        self.top_factor = 500_000
+        self.top_factor = 10000
         self.bottom_factor = 1
 
     def __call__(
