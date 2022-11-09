@@ -4,6 +4,7 @@ from os.path import dirname, join
 
 import matplotlib.pyplot as plt
 import numpy as np
+from adjustText import adjust_text
 from scipy.optimize import curve_fit
 
 from pysme.sme import SME_Structure
@@ -11,7 +12,7 @@ from pysme.sme import SME_Structure
 if __name__ == "__main__":
     results_dir = join(dirname(__file__), "json")
     targets = [
-        # "au_mic.json",
+        "au_mic.json",
         "eps_eri.json",
         "55_cnc.json",
         "hd_102195.json",
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     ]
     names = np.array(
         [
-            # "AU Mic",
+            "AU Mic",
             "Eps Eri",
             "55 Cnc",
             "HD 102195",
@@ -36,6 +37,14 @@ if __name__ == "__main__":
     )
     snr = []
     parameters = ["teff", "logg", "monh", "vmic", "vmac", "vsini"]
+    parameters_names = [
+        r"$T_{eff}$",
+        r"$\log(g)$",
+        r"[M/H]",
+        r"$v_{mic}$",
+        r"$v_{mac}$",
+        r"$v \sin(i)$",
+    ]
     method = []
     units = ["K", "log(cm/s**2)", "[F/H]", "km/s", "km/s", "km/s"]
 
@@ -54,7 +63,7 @@ if __name__ == "__main__":
             values[p][i] = sme[p]
             uncertainties[p][i] = sme[f"unc_{p}"]
             inf_values[p][i] = sme.get(f"inf_{p}", np.nan)
-            inf_uncertainties[p][i] = sme.get("inf_unc_{p}", np.nan)
+            inf_uncertainties[p][i] = sme.get(f"unc_inf_{p}", np.nan)
         method += [sme["method"]]
         # fitparameters = np.asarray(sme.fitresults.parameters)
         # fituncertainties = np.asarray(sme.fitresults.uncertainties)
@@ -63,7 +72,7 @@ if __name__ == "__main__":
     method = np.array(method)
 
     # Plot trends
-    for p, u in zip(parameters, units):
+    for p, pn, u in zip(parameters, parameters_names, units):
         # x = values[p]
         x = values["teff"]
         y = uncertainties[p]
@@ -71,8 +80,8 @@ if __name__ == "__main__":
         xf = np.linspace(x.min(), x.max(), 100)
         popt, pcov = curve_fit(
             lambda x, *p: np.polyval(p, x),
-            x[names != "AU Mic"],
-            y[names != "AU Mic"],
+            x[(names != "AU Mic") & (names != "55 Cnc") & (names != "HN Peg")],
+            y[(names != "AU Mic") & (names != "55 Cnc") & (names != "HN Peg")],
             p0=np.zeros(2),
             method="trf",
             loss="soft_l1",
@@ -86,12 +95,14 @@ if __name__ == "__main__":
         plt.plot(xf, f, "--")
         # plt.plot(xf, fup, "r-.")
         # plt.plot(xf, flo, "r-.")
-
+        texts = []
         for i in range(len(targets)):
-            plt.text(x[i], y[i], names[i])
-        plt.xlabel("$T_{eff}$ [K]")
-        plt.ylabel(fr"$\sigma${p} [{u}]")
+            texts += [plt.text(x[i], y[i], names[i])]
+        adjust_text(texts, arrowprops=dict(arrowstyle="-", color="k", lw=0.5))
 
+        plt.xlabel("$T_{eff}$ [K]", fontsize="large")
+        plt.ylabel(fr"$\sigma${pn} [{u}]", fontsize="large")
+        plt.tight_layout()
         plt.savefig(join(dirname(__file__), f"images/trend_{p}.png"))
         # plt.show()
         plt.clf()
@@ -100,34 +111,38 @@ if __name__ == "__main__":
         if not np.all(np.isnan(inf_values[p])):
             delta = values[p] - inf_values[p]
             xerr = inf_uncertainties[p]
+            yerr = uncertainties[p]
             mask = method == "interferometry"
 
             plt.errorbar(
                 x[mask],
                 delta[mask],
-                yerr=y[mask],
-                xerr=xerr[mask],
+                yerr=yerr[mask],
+                # xerr=xerr[mask],
                 fmt="o",
                 label="interferometry",
             )
             plt.errorbar(
                 x[~mask],
                 delta[~mask],
-                yerr=y[~mask],
-                xerr=xerr[~mask],
+                yerr=yerr[~mask],
+                # xerr=xerr[~mask],
                 fmt="o",
                 mfc="#ffffff",
                 label="spectroscopy",
             )
 
             plt.hlines(0, x.min(), x.max(), colors="k")
+            texts = []
             for i in range(len(targets)):
                 if not np.isnan(delta[i]):
-                    plt.text(x[i], delta[i], names[i])
+                    texts += [plt.text(x[i], delta[i], names[i])]
+            adjust_text(texts, arrowprops=dict(arrowstyle="-", color="k", lw=0.5))
 
-            plt.legend(loc="upper left")
-            plt.ylabel(fr"$\Delta${p} [{u}]")
-            plt.xlabel("$T_{eff}$ [K]")
+            plt.legend(loc="lower left")
+            plt.ylabel(fr"$\Delta${pn} [{u}]", fontsize="x-large")
+            plt.xlabel("$T_{eff}$ [K]", fontsize="x-large")
+            plt.tight_layout()
             plt.savefig(join(dirname(__file__), f"images/delta_{p}.png"))
             # plt.show()
             plt.clf()
@@ -136,8 +151,8 @@ if __name__ == "__main__":
 
             popt, pcov = curve_fit(
                 lambda x, *p: np.polyval(p, x),
-                x[names != "AU Mic"],
-                y[names != "AU Mic"],
+                x[(names != "AU Mic") & (names != "55 Cnc") & (names != "HN Peg")],
+                y[(names != "AU Mic") & (names != "55 Cnc") & (names != "HN Peg")],
                 p0=np.zeros(2),
                 method="trf",
                 loss="soft_l1",
@@ -151,11 +166,14 @@ if __name__ == "__main__":
             plt.plot(xf, f, "--")
             # plt.plot(xf, fup, "r-.")
             # plt.plot(xf, flo, "r-.")
-
+            texts = []
             for i in range(len(targets)):
-                plt.text(x[i], y[i], names[i])
+                texts += [plt.text(x[i], y[i], names[i])]
+            adjust_text(texts, arrowprops=dict(arrowstyle="-", color="k", lw=0.5))
+
             plt.xlabel("$T_{eff}$ [K]")
-            plt.ylabel(f"{p} [{u}]")
+            plt.ylabel(f"{pn} [{u}]")
+            plt.tight_layout()
             plt.savefig(join(dirname(__file__), f"images/teff_trend_{p}.png"))
             # plt.show()
             plt.clf()

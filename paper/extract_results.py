@@ -2,8 +2,6 @@
 import json
 from os.path import dirname, join
 
-import numpy as np
-
 from pysme.sme import SME_Structure
 
 targets = [
@@ -21,12 +19,19 @@ targets = [
 cwd = dirname(__file__)
 
 for target in targets:
-    fname = join(cwd, f"results/{target}_monh_teff_logg_vmic_vmac_vsini.sme")
+    fname = join(cwd, f"results/{target}_monh_teff_logg_vmic_vmac_vsini_fix.sme")
     jname = join(cwd, f"json/{target.lower()}.json")
     sme = SME_Structure.load(fname)
 
     with open(jname, "r") as f:
         data = json.load(f)
+
+    # delp = sme.fitresults.residuals / sme.fitresults.derivative[:, 1]
+    # delp = delp.ravel()
+    # vmin, vmax = -5000, 5000
+    # plt.hist(delp, bins="auto", range=(vmin, vmax))
+    # plt.savefig(join(dirname(__file__), f"images/test.png"))
+    # plt.show()
 
     for param in ["teff", "logg", "monh", "vmic", "vmac", "vsini"]:
         idx = [i for i, p in enumerate(sme.fitresults.parameters) if p == param][0]

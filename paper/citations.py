@@ -12,7 +12,7 @@ from pysme.sme import SME_Structure
 
 cwd = dirname(__file__)
 
-sme = SME_Structure.load(join(cwd, "results/55_Cnc_inp.sme"))
+sme = SME_Structure.load(join(cwd, "results/AU_Mic_inp.sme"))
 _, lfs, lfs_nlte = setup_lfs()
 
 # linelist
@@ -74,7 +74,7 @@ def linelist(sme):
     with open("debug_citation_info.bib", "w") as f:
         f.write(cite)
 
-    return
+    return table, cite
 
 
 # Atmospere
@@ -94,3 +94,4 @@ for elem in elems:
 
 
 cite = sme.citation()
+print(cite)

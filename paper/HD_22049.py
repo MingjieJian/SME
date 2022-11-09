@@ -15,7 +15,7 @@ from astropy import constants as const
 from astropy.io import fits
 from data_sources.StellarDB import StellarDB
 from scipy.interpolate import interp1d
-from scipy.ndimage.filters import gaussian_filter1d, median_filter
+from scipy.ndimage import gaussian_filter1d, median_filter
 from scipy.optimize import least_squares
 from tqdm import tqdm
 
@@ -26,6 +26,7 @@ from pysme.continuum_and_radial_velocity import determine_radial_velocity
 from pysme.gui import plot_plotly
 from pysme.iliffe_vector import Iliffe_vector
 from pysme.linelist.vald import ValdFile
+from pysme.sme import MASK_VALUES
 from pysme.solve import solve
 from pysme.synthesize import synthesize_spectrum
 
@@ -267,11 +268,14 @@ def vel_shift(rv, wave):
 
 
 def get_rv_tell(wave, flux, wtell, ftell):
+    # mask = (wave > 6200) & (wave < 6400)
     mask = wave > 6866
     sme = SME.SME_Structure(wave=[wave[mask]], sob=[flux[mask]])
     sme.vrad_flag = "each"
     sme.cscale_flag = "none"
-    rv_tell = determine_radial_velocity(sme, wtell, ftell, 0, rv_bounds=(-200, 200))
+    rv_tell = determine_radial_velocity(
+        sme, wtell, ftell, 0, least_squares_kwargs={"bounds": (-200, 200)}
+    )
     # plt.plot(vel_shift(rv, wave[sme.mask[0] == 1]), flux[sme.mask[0] == 1])
     # plt.plot(wtapas[wtapas > 6866], ftapas[wtapas > 6866])
     # plt.show()
@@ -331,14 +335,23 @@ def init(
     # Load data from fits file
     hdu = fits.open(in_file)
     wave = hdu[1].data["WAVE"][0]
-    flux = hdu[1].data["FLUX"][0]
+    if "FLUX_REDUCED" in hdu[1].data.columns.names:
+        flux = hdu[1].data["FLUX_REDUCED"][0]
+    else:
+        flux = hdu[1].data["FLUX"][0]
+    if "ERR_REDUCED" in hdu[1].data.columns.names:
+        uncs = hdu[1].data["ERR_REDUCED"][0]
+    else:
+        uncs = hdu[1].data["ERR"][0]
     # the error column is all NaNs
-    uncs = np.sqrt(np.abs(flux))
+    uncs[np.isnan(uncs)] = np.sqrt(np.abs(flux[np.isnan(uncs)]))
 
     if mask is not None:
         for m in mask:
             flux[m[0] : m[1]] = 0
     cont = normalize(wave, flux, return_cont=True)
+    # dw = np.median(np.diff(wave))
+    # cont = gaussian_filter1d(flux, 6000 * dw) * 1.5
     flux /= cont
     uncs /= np.abs(cont)
 
@@ -371,6 +384,9 @@ def init(
 
     # Create the SME structure
     sme = SME.SME_Structure(wave=wave, sob=flux)
+    # This should already be the default
+    sme.leastsquares_loss = "linear"
+
     sme.meta["object"] = target
     sme.normalize_by_continuum = True
     sme.nmu = 7
@@ -379,15 +395,15 @@ def init(
     # Add telluric data (without rayleigh scattering)
     sme.telluric = Iliffe_vector(values=ftapas)
     # Create first mask by removing the telluric offset
-    sme.mask = sme.mask_values["line"]
+    sme.mask = MASK_VALUES.LINE
     for i in range(sme.nseg):
-        sme.mask[i][sme.telluric[i] < 0.995] = sme.mask_values["bad"]
-        sme.mask[i][sme.spec[i] == 0] = sme.mask_values["bad"]
+        sme.mask[i][sme.telluric[i] < 0.995] = MASK_VALUES.BAD
+        sme.mask[i][sme.spec[i] == 0] = MASK_VALUES.BAD
 
     # Get first guess from literature values
-    sme.teff = get_value(star, "t_eff", "K")
-    sme.logg = get_value(star, "logg", 1)
-    monh = get_value(star, "metallicity", 1, 0)
+    sme.teff = get_value(star, "t_eff", "K", alt=6000)
+    sme.logg = get_value(star, "logg", 1, alt=4.4)
+    monh = get_value(star, "metallicity", 1, alt=0)
     sme.abund = Abund(monh, "asplund2009")
     # There is no reference for these, use solar values instead
     sme.vmic = 1
@@ -403,7 +419,8 @@ def init(
     wmin = sme.wran[segments[0]][0]
     wmax = sme.wran[segments[-1]][-1]
     sme.linelist = sme.linelist.trim(wmin, wmax, rvel=100)
-
+    if target in linelist_cull.keys():
+        sme.linelist = sme.linelist.cull_percentage(linelist_cull[target])
     # Set the atmosphere grid
     sme.atmo.source = "marcs2012.sav"
     sme.atmo.geom = "PP"
@@ -429,11 +446,19 @@ def init(
     # Set radial velocity and continuum settings
     # Set RV and Continuum flags
     ctype, cflag = cscale.rsplit("+", 1)
-    sme.vrad_flag = vrad
     sme.cscale_flag = cflag
     sme.cscale_type = ctype
-    sme.vrad = None
     sme.cscale = None
+
+    if vrad is None:
+        sme.vrad_flag = "none"
+        sme.vrad = None
+    if isinstance(vrad, str):
+        sme.vrad_flag = vrad
+        sme.vrad = None
+    else:
+        sme.vrad_flag = "fix"
+        sme.vrad = vrad
 
     # Harps instrumental broadening
     sme.iptype = "gauss"
@@ -449,8 +474,8 @@ def fit(sme, target, segments="all", remove_outliers=False):
 
     # Define all parameters to be extra sure they are correct
     fitparameters = ["monh", "teff", "logg", "vmic", "vmac", "vsini"]
-    sme.vrad = None
-    sme.cscale = None
+    # sme.vrad = None
+    # sme.cscale = None
 
     # Mask outlier points
     if remove_outliers:
@@ -464,15 +489,17 @@ def fit(sme, target, segments="all", remove_outliers=False):
         sme.cscale_flag = "fix"
 
     # Run least squares fit
-    sme = solve(sme, fitparameters, segments=segments)
+    backup_fname = f"{target}_{'_'.join(fitparameters)}_bkp.sme"
+    backup_fname = os.path.join(examples_dir, "results", backup_fname)
+    sme = solve(sme, fitparameters, segments=segments, filename=backup_fname)
 
     # Save results
     fname = f"{target}_{'_'.join(fitparameters)}"
-    out_file = os.path.join(examples_dir, "results", fname + ".sme")
+    out_file = os.path.join(examples_dir, "results", fname + "_fix2.sme")
     sme.save(out_file)
 
     # plot
-    plot_file = os.path.join(examples_dir, "results", fname + ".html")
+    plot_file = os.path.join(examples_dir, "results", fname + "_fix2.html")
     fig = plot_plotly.FinalPlot(sme)
     fig.save(filename=plot_file, auto_open=False)
 
@@ -491,18 +518,19 @@ if __name__ == "__main__":
         "HD_189733",
         "55_Cnc",
         "WASP-18",
+        "GJ1214",
     ]
-    rv = {
-        "AU_Mic": {"star": -30, "tell": -56},
-        "Eps_Eri": {"star": 66, "tell": -103},
-        "HN_Peg": {"star": 0, "tell": -101},
-        "HD_102195": {"star": 0, "tell": -100},
-        "HD_130322": {"star": 0, "tell": -55},
-        "HD_179949": {"star": 0, "tell": -103},
-        "HD_189733": {"star": 0, "tell": -96},
-        "55_Cnc": {"star": 0, "tell": -82},
-        "WASP-18": {"star": 0, "tell": -98},
-    }
+    # rv = {
+    #     "AU_Mic": {"star": -51.9035, "tell": -56},
+    #     "Eps_Eri": {"star": 66, "tell": -103},
+    #     "HN_Peg": {"star": 0, "tell": -101},
+    #     "HD_102195": {"star": 0, "tell": -100},
+    #     "HD_130322": {"star": 0, "tell": -55},
+    #     "HD_179949": {"star": 0, "tell": -103},
+    #     "HD_189733": {"star": 0, "tell": -96},
+    #     "55_Cnc": {"star": 0, "tell": -82},
+    #     "WASP-18": {"star": 0, "tell": -98},
+    # }
     # These areas contain bad pixels, that disturb our initial rough
     # continuum normalization, and are therefore removed even before that
     masked = {
@@ -597,9 +625,11 @@ if __name__ == "__main__":
             (272924, 272942),
             (274365, 274384),
         ],
+        "GJ1214": [],
     }
     linelist = {
-        # "AU_Mic": "au_mic.lin",
+        "AU_Mic": "au_mic.lin",
+        "GJ1214": "gj1214.lin",
         # "HN_Peg": "hn_peg.lin",
         # "Eps_Eri": "eps_eri.lin",
         # "HD_102195": "hd_102195.lin",
@@ -609,14 +639,19 @@ if __name__ == "__main__":
         # "55_Cnc": "55_cnc.lin",
         # "WASP-18": "wasp_18.lin",
     }
-    cscale_type = {"AU_Mic": "matchlines+quadratic"}
-    vrad_flag = {}
+    linelist_cull = {"GJ1214": 50}
+    cscale_type = {
+        "AU_Mic": "matchlines+quadratic",
+        "GJ1214": "matchlines+quadratic",
+    }
+    vrad_flag = {"AU_Mic": 51.9035}
     remove_outliers = {"AU_Mic": True}
 
     def parallel(target):
         print(f"Starting {target}")
         segments = range(6, 31)
-        # segments = [9]
+        # segments = [9, 10]
+        # segments = range(1, 6)
 
         # Start the logging to the file
         examples_dir = dirname(realpath(__file__))

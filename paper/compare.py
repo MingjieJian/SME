@@ -1,23 +1,54 @@
 # -*- coding: utf-8 -*-
 from os.path import dirname, join
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from pysme.gui import plot_plotly
 from pysme.iliffe_vector import Iliffe_vector
 from pysme.sme import SME_Structure
-from pysme.solve import solve
-from pysme.synthesize import synthesize_spectrum
+from pysme.solve import SME_Solver, solve
 
 cwd = dirname(__file__)
 
-fname = join(cwd, "results/55_Cnc_monh_teff_logg_vmic_vmac_vsini.sme")
+# fname = join(cwd, "results/55_Cnc_monh_teff_logg_vmic_vmac_vsini.sme")
+fname = join(cwd, "55_Cnc_tanja_out.sme")
 sme = SME_Structure.load(fname)
 segments = np.where([sme.synth.shape[1] != 0])[1]
 
+# fname = join(cwd, "55_Cnc_job1_7_NLTE_param_RV_cormask.inp")
 fname = join(cwd, "55_Cnc_job1_all_NLTE_param_RV.out")
 idl = SME_Structure.load(fname)
+
+# idl = solve(idl, ["monh", "logg", "teff"])
+# fname = join(cwd, "55_Cnc_tanja_out.sme")
+# idl.save(fname)
+
+orig = np.interp(
+    idl.wave.ravel(), sme.wave[segments].ravel(), sme.synth[segments].ravel()
+)
+orig = Iliffe_vector(orig, offsets=idl.wave.offsets)
+
+fig = plot_plotly.FinalPlot(
+    idl, orig=orig, labels={"synth": "IDL SME", "orig": "PySME"}
+)
+fig.save(filename=join(cwd, "Cnc55_tanja_new.html"))
+exit()
+
+
+mask_orig = np.copy(sme.mask_good[segments].ravel())
+sme = sme.import_mask(idl)
+
+mask = sme.mask_good[segments]
+unc = sme.uncs[segments]
+unc = unc[mask]
+unc = unc.ravel()
+
+resid = sme.fitresults.residuals[mask.ravel()[mask_orig]]
+deriv = sme.fitresults.derivative[mask.ravel()[mask_orig]]
+solver = SME_Solver()
+solver.parameter_names = sme.fitresults.parameters
+uncs = solver.estimate_uncertainties(unc, resid, deriv)
+
 
 orig = np.interp(
     idl.wave.ravel(), sme.wave[segments].ravel(), sme.spec[segments].ravel()
