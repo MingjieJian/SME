@@ -82,6 +82,14 @@ if __name__ == "__main__":
     spec_true = sme.synth.copy()
     sme.spec = spec_true.copy()
 
+    noise = rng.standard_normal(sme.spec[0].size) / snr
+    spec_copy = spec_true.copy()
+    sme.spec[0] = spec_copy * (1 + noise)
+    sme.uncs = np.sqrt(sme.spec)
+    for j, fp in enumerate(fitparameters):
+        sme[fp] = sme[fp] + rng.standard_normal() * scale[fp]
+    sme = solve(sme, fitparameters)
+
     # signal to noise ratio of 100 is roughly what we expect to have in good cases
     # TODO: experiment with lower values
     nrepeats = 1000

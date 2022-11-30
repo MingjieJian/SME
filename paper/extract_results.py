@@ -2,13 +2,16 @@
 import json
 from os.path import dirname, join
 
+import matplotlib.pyplot as plt
+
 from pysme.sme import SME_Structure
+from pysme.solve import SME_Solver
 
 targets = [
     "Eps_Eri",
     "HN_Peg",
     "55_Cnc",
-    "AU_Mic",
+    # "AU_Mic",
     "HD_102195",
     "HD_130322",
     "HD_179949",
@@ -19,19 +22,21 @@ targets = [
 cwd = dirname(__file__)
 
 for target in targets:
-    fname = join(cwd, f"results/{target}_monh_teff_logg_vmic_vmac_vsini_fix.sme")
+    fname = join(cwd, f"results/{target}_monh_teff_logg_vmic_vmac_vsini_fix4.sme")
     jname = join(cwd, f"json/{target.lower()}.json")
-    sme = SME_Structure.load(fname)
+    try:
+        sme = SME_Structure.load(fname)
+    except FileNotFoundError as ex:
+        print(f"WARNING: {ex}")
+        continue
+
+    # resid = sme.fitresults.residuals
+    # deriv = sme.fitresults.derivative
+    # uncs = SME_Solver.estimate_uncertainties(resid, deriv)
+    # sme.fitresults.uncertainties = uncs
 
     with open(jname, "r") as f:
         data = json.load(f)
-
-    # delp = sme.fitresults.residuals / sme.fitresults.derivative[:, 1]
-    # delp = delp.ravel()
-    # vmin, vmax = -5000, 5000
-    # plt.hist(delp, bins="auto", range=(vmin, vmax))
-    # plt.savefig(join(dirname(__file__), f"images/test.png"))
-    # plt.show()
 
     for param in ["teff", "logg", "monh", "vmic", "vmac", "vsini"]:
         idx = [i for i, p in enumerate(sme.fitresults.parameters) if p == param][0]

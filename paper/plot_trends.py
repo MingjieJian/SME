@@ -12,7 +12,7 @@ from pysme.sme import SME_Structure
 if __name__ == "__main__":
     results_dir = join(dirname(__file__), "json")
     targets = [
-        "au_mic.json",
+        # "au_mic.json",
         "eps_eri.json",
         "55_cnc.json",
         "hd_102195.json",
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     ]
     names = np.array(
         [
-            "AU Mic",
+            # "AU Mic",
             "Eps Eri",
             "55 Cnc",
             "HD 102195",
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         plt.xlabel("$T_{eff}$ [K]", fontsize="large")
         plt.ylabel(fr"$\sigma${pn} [{u}]", fontsize="large")
         plt.tight_layout()
-        plt.savefig(join(dirname(__file__), f"images/trend_{p}.png"))
+        plt.savefig(join(dirname(__file__), f"images/trend_{p}.pdf"))
         # plt.show()
         plt.clf()
 
@@ -113,6 +113,12 @@ if __name__ == "__main__":
             xerr = inf_uncertainties[p]
             yerr = uncertainties[p]
             mask = method == "interferometry"
+
+            bias = np.mean(delta)
+            std = np.std(delta)
+            print(f"{pn}: {bias} +- {std}")
+            # delta -= bias
+            # yerr[:] = std
 
             plt.errorbar(
                 x[mask],
@@ -139,11 +145,11 @@ if __name__ == "__main__":
                     texts += [plt.text(x[i], delta[i], names[i])]
             adjust_text(texts, arrowprops=dict(arrowstyle="-", color="k", lw=0.5))
 
-            plt.legend(loc="lower left")
+            plt.legend(loc="lower right")
             plt.ylabel(fr"$\Delta${pn} [{u}]", fontsize="x-large")
             plt.xlabel("$T_{eff}$ [K]", fontsize="x-large")
             plt.tight_layout()
-            plt.savefig(join(dirname(__file__), f"images/delta_{p}.png"))
+            plt.savefig(join(dirname(__file__), f"images/delta_{p}.pdf"))
             # plt.show()
             plt.clf()
         else:
@@ -174,7 +180,7 @@ if __name__ == "__main__":
             plt.xlabel("$T_{eff}$ [K]")
             plt.ylabel(f"{pn} [{u}]")
             plt.tight_layout()
-            plt.savefig(join(dirname(__file__), f"images/teff_trend_{p}.png"))
+            plt.savefig(join(dirname(__file__), f"images/teff_trend_{p}.pdf"))
             # plt.show()
             plt.clf()
 

@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     # Start SME solver
     sme.cscale = None
-    sme.vrad_flag = "each"
+    sme.vrad_flag = "whole"
 
     continuum = {}
     synth = {}
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     # Plot results
     for label, cont in continuum.items():
 
-        plot_file = join(dirname(__file__), f"images/continuum_{label}.png")
+        plot_file = join(dirname(__file__), f"images/continuum_{label}.pdf")
         plt.plot(sme.wave[0], sme.spec[0], label="Observation", color="tab:blue")
         # plt.plot(sme.wave[0], sme.synth[0], label="Synthetic")
 
@@ -187,40 +187,5 @@ if __name__ == "__main__":
         # plt.ylim(0.9, 1.01)
         plt.savefig(plot_file)
         plt.clf()
-
-    # plot_file = join(dirname(__file__), "images/continuum_2.png")
-    # plt.plot(sme.wave[0], sme.spec[0], label="Observation")
-    # plt.plot(sme.wave[0], sme.synth[0], label="Synthetic")
-    # plt.fill_between(
-    #     sme.wave[0],
-    #     0,
-    #     sme.spec[0],
-    #     where=sme.mask[0] == 1,
-    #     label="Mask Line",
-    #     facecolor="#bcbd22",
-    #     alpha=1,
-    # )
-
-    # m = sme.mask[0] == 2
-    # m[1:] = m[:-1] | m[1:]
-    # m[:-1] = m[:-1] | m[1:]
-    # plt.fill_between(
-    #     sme.wave[0],
-    #     0,
-    #     sme.spec[0],
-    #     where=m,
-    #     label="Mask Continuum",
-    #     facecolor="#d62728",
-    #     alpha=1,
-    # )
-
-    # for label, cont in continuum.items():
-    #     plt.plot(sme.wave[0], sme.synth[0] * cont, label=label)
-    # plt.legend(loc="lower right", fontsize="small")
-    # plt.xlabel("Wavelength [Å]")
-    # plt.ylabel("Flux [A.U.]")
-    # plt.ylim(0.9925, 1.004)
-    # plt.savefig(plot_file)
-    # plt.show()
 
     pass

@@ -10,15 +10,15 @@ from pysme.sme import SME_Structure
 if __name__ == "__main__":
     results_dir = join(dirname(__file__), "results")
     targets = [
-        "Eps_Eri_monh_teff_logg_vmic_vmac_vsini_fix.sme",
-        "HN_Peg_monh_teff_logg_vmic_vmac_vsini_fix.sme",
-        "HD_102195_monh_teff_logg_vmic_vmac_vsini_fix.sme",
-        "HD_130322_monh_teff_logg_vmic_vmac_vsini_fix.sme",
-        "HD_179949_monh_teff_logg_vmic_vmac_vsini_fix.sme",
-        "HD_189733_monh_teff_logg_vmic_vmac_vsini_fix.sme",
-        "55_Cnc_monh_teff_logg_vmic_vmac_vsini_fix.sme",
-        "WASP-18_monh_teff_logg_vmic_vmac_vsini_fix.sme",
-        "AU_Mic_monh_teff_logg_vmic_vmac_vsini_fix.sme",
+        "Eps_Eri_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
+        "HN_Peg_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
+        "HD_102195_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
+        "HD_130322_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
+        "HD_179949_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
+        "HD_189733_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
+        "55_Cnc_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
+        "WASP-18_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
+        # "AU_Mic_monh_teff_logg_vmic_vmac_vsini_fix.sme",
     ]
     names = np.array(
         [
@@ -30,7 +30,7 @@ if __name__ == "__main__":
             "HD 189733",
             "55 Cnc",
             "WASP-18",
-            "AU Mic",
+            # "AU Mic",
         ]
     )
 
@@ -67,7 +67,7 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     fig.subplots_adjust(wspace=0, hspace=0)
-    plt.savefig(join(dirname(__file__), "images/plot_all.png"))
+    plt.savefig(join(dirname(__file__), "images/plot_all.pdf"))
     # plt.show()
 
     pass

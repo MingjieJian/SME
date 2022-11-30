@@ -10,9 +10,16 @@ from pysme.solve import SME_Solver, solve
 
 cwd = dirname(__file__)
 
-# fname = join(cwd, "results/55_Cnc_monh_teff_logg_vmic_vmac_vsini.sme")
+# fname = join(cwd, "results/55_Cnc_monh_teff_logg_vmic_vmac_vsini_fix3.sme")
 fname = join(cwd, "55_Cnc_tanja_out.sme")
 sme = SME_Structure.load(fname)
+
+
+puncs = SME_Solver.estimate_uncertainties(
+    sme.fitresults.residuals, sme.fitresults.derivative
+)
+
+
 segments = np.where([sme.synth.shape[1] != 0])[1]
 
 # fname = join(cwd, "55_Cnc_job1_7_NLTE_param_RV_cormask.inp")

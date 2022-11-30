@@ -353,7 +353,8 @@ def init(
     # dw = np.median(np.diff(wave))
     # cont = gaussian_filter1d(flux, 6000 * dw) * 1.5
     flux /= cont
-    uncs /= np.abs(cont)
+    # uncs /= np.sqrt(np.abs(cont))
+    uncs = np.sqrt(flux) * np.abs(flux)
 
     # plt.plot(wave, uncs / np.nanmedian(uncs))
     # plt.plot(wave, np.sqrt(flux) / np.nanmedian(np.sqrt(flux)))
@@ -495,11 +496,11 @@ def fit(sme, target, segments="all", remove_outliers=False):
 
     # Save results
     fname = f"{target}_{'_'.join(fitparameters)}"
-    out_file = os.path.join(examples_dir, "results", fname + "_fix2.sme")
+    out_file = os.path.join(examples_dir, "results", fname + "_fix4.sme")
     sme.save(out_file)
 
     # plot
-    plot_file = os.path.join(examples_dir, "results", fname + "_fix2.html")
+    plot_file = os.path.join(examples_dir, "results", fname + "_fix4.html")
     fig = plot_plotly.FinalPlot(sme)
     fig.save(filename=plot_file, auto_open=False)
 
@@ -684,7 +685,7 @@ if __name__ == "__main__":
         return sme
 
     # Parse the cmd arguments
-    target = sys.argv[1] if len(sys.argv) != 1 else "AU_Mic"
+    target = sys.argv[1] if len(sys.argv) != 1 else "55_Cnc"
 
     parallel(target)
     pass
