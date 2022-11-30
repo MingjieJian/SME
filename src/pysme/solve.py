@@ -461,7 +461,8 @@ class SME_Solver:
         ]
         return np.array(values)
 
-    def estimate_uncertainties(self, unc, resid, deriv):
+    @staticmethod
+    def estimate_uncertainties(resid, deriv):
         """
         Estimate the uncertainties by fitting the cumulative distribution of
         derivative / uncertainties vs. residual / derivative
@@ -483,48 +484,18 @@ class SME_Solver:
             uncertainties for each free paramater, in the same order as self.parameter_names
         """
 
-        freep_name = self.parameter_names
-        nparameters = len(freep_name)
+        nparameters = deriv.shape[1]
         freep_unc = np.zeros(nparameters)
 
-        # The goodness of fit
-        # but the metric below, is already indifferent to
-        # the absolute scale of the uncertainties
-        chi2 = np.sum(resid ** 2) / (resid.size - nparameters)
-
-        # Cumulative distribution function of the normal distribution
-        # cdf = lambda x, mu, sig: 0.5 * (1 + erf((x - mu) / (np.sqrt(2) * sig)))
-        # std = lambda mu, sig: sig
-
-        # def cdf(x, mu, alpha):
-        #     """
-        #     Cumulative distribution function of the generalized normal distribution
-        #     the factor sqrt(2) is a conversion between generalized and regular normal distribution
-        #     """
-        #     # return gennorm.cdf(x, beta, loc=mu, scale=alpha * np.sqrt(2))
-        #     return norm.cdf(x, loc=mu, scale=alpha)
-
-        # def std(mu, alpha):
-        #     """1 sigma (68.27 %) quantile, assuming symmetric distribution"""
-        #     # interval = gennorm.interval(0.6827, beta, loc=mu, scale=alpha * np.sqrt(2))
-        #     interval = norm.interval(0.6827, loc=mu, scale=alpha)
-        #     sigma = (interval[1] - interval[0]) / 2
-        #     return sigma
-
-        for i, pname in enumerate(freep_name):
+        for i in range(nparameters):
             pder = deriv[:, i]
             idx = pder != 0
-            idx &= np.abs(resid) / np.sqrt(chi2) < 5
-
-            med = np.median(np.abs(pder))
-            mad = np.median(np.abs(np.abs(pder) - med))
-            idx &= np.abs(pder) < med + 20 * mad
+            idx &= np.isfinite(pder)
 
             if np.count_nonzero(idx) <= 5:
                 logger.warning(
                     "Not enough data points with a suitable derivative "
-                    "to determine the uncertainties of %s",
-                    freep_name[i],
+                    "to determine the uncertainties"
                 )
                 continue
             # Sort pixels according to the change of the i
@@ -539,54 +510,10 @@ class SME_Solver:
             # Normalized cumulative weights
             ch_y /= ch_y[-1]
 
-            hmed = np.interp(0.5, ch_y, ch_x)
+            # hmed = np.interp(0.5, ch_y, ch_x)
             interval = np.interp([0.16, 0.84], ch_y, ch_x)
             sigma_estimate = (interval[1] - interval[0]) / 2
             freep_unc[i] = sigma_estimate
-
-            # # Fit the distribution
-            # from scipy.optimize import curve_fit
-
-            # try:
-            #     sopt, _ = curve_fit(cdf, ch_x, ch_y)
-            # except RuntimeError:
-            #     # Fit failed, use dogbox instead
-            #     try:
-            #         sopt, _ = curve_fit(cdf, ch_x, ch_y, method="dogbox")
-            #     except RuntimeError:
-            #         sopt = [0, 0, 0]
-
-            # hmed = sopt[0]
-            # sigma_estimate = std(*sopt)
-
-            # # Debug plots
-            # import matplotlib.pyplot as plt
-
-            # # Plot 1 (cumulative distribution)
-            # r = (sopt[0] - 20 * sopt[1], sopt[0] + 20 * sopt[1])
-            # x = np.linspace(ch_x.min(), ch_x.max(), ch_x.size * 10)
-            # plt.plot(ch_x, ch_y, "+", label="measured")
-            # plt.plot(x, cdf(x, *sopt), label="fit")
-            # plt.xlabel(freep_name[i])
-            # plt.ylabel("cumulative probability")
-            # plt.show()
-            # # Plot 2 (density distribution)
-            # x = np.linspace(r[0], r[-1], ch_x.size * 10)
-            # plt.hist(
-            #     ch_x,
-            #     bins="auto",
-            #     density=True,
-            #     histtype="step",
-            #     range=r,
-            #     label="measured",
-            # )
-            # plt.plot(x, norm.pdf(x, loc=sopt[0], scale=sopt[1]), label="fit")
-            # plt.xlabel(freep_name[i])
-            # plt.ylabel("probability")
-            # plt.xlim(r)
-            # plt.show()
-
-            # logger.debug(f"{pname}: {hmed}, {sigma_estimate}")
 
         return freep_unc
 
@@ -622,12 +549,9 @@ class SME_Solver:
             sme.fitresults.fit_uncertainties[i] = sig[i] * np.sqrt(sme.fitresults.chisq)
 
         try:
-            mask = sme.mask_good[segments]
-            unc = sme.uncs[segments]
-            unc = unc[mask] if mask is not None else unc
-            unc = unc.ravel()
             sme.fitresults.uncertainties = self.estimate_uncertainties(
-                unc, result.fun, result.jac
+                sme.fitresults.residuals,
+                sme.fitresults.derivative,
             )
         except:
             logger.warning(
@@ -767,7 +691,7 @@ class SME_Solver:
 
         # Divide the uncertainties by the spectrum, to improve the fit in the continuum
         # Just as in IDL SME, this increases the relative error for points inside lines
-        uncs /= np.sqrt(np.abs(spec))
+        # uncs /= np.abs(spec)
 
         # This is the expected range of the uncertainty
         # if the residuals are larger, they are dampened by log(1 + z)

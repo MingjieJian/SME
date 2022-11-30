@@ -535,7 +535,7 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
         # We over exaggerate the weights on the top of the spectrum
         # this works well to determine the continuum
         # assuming that there is something there
-        self.top_factor = 100
+        self.top_factor = 1000
         self.bottom_factor = 1
 
     def __call__(
@@ -1068,6 +1068,7 @@ def determine_radial_velocity(
             rv_factor = np.sqrt((1 - rv / c_light) / (1 + rv / c_light))
             shifted = interpolator(x_obs * rv_factor)
             resid = (y_obs - shifted * tell) / u_obs
+            resid[~mask] = 0
             resid = np.nan_to_num(resid, copy=False, nan=0, posinf=0, neginf=0)
             return resid
 

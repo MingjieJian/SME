@@ -344,7 +344,11 @@ def log_version():
     logger.debug("Pandas version: %s", pdversion)
 
 
-def start_logging(log_file="log.log", level="DEBUG"):
+def start_logging(
+    log_file="log.log",
+    level="DEBUG",
+    format="%(asctime)-15s - %(levelname)s - %(name)-8s - %(message)s",
+):
     """Start logging to log file and command line
 
     Parameters
@@ -365,9 +369,7 @@ def start_logging(log_file="log.log", level="DEBUG"):
 
     logger.setLevel(level)
     filehandler = logging.FileHandler(log_file, mode="w")
-    formatter = logging.Formatter(
-        "%(asctime)-15s - %(levelname)s - %(name)-8s - %(message)s"
-    )
+    formatter = logging.Formatter(format)
     filehandler.setFormatter(formatter)
     logger.addHandler(filehandler)
 
