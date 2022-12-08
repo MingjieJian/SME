@@ -602,8 +602,15 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
 
         # TODO: what should this be?
         if self.top_factor != 0:
+            from scipy.ndimage import median_filter
+
+            diff = median_filter(y, 5) - y
+            std = 1.5 * np.median(np.abs(diff[diff != 0] - np.median(diff[diff != 0])))
+            snr = 1 / std
+            factor = 1000 + (snr - 50) * 90
+            factor = np.clip(factor, 100, 100_000)
             mod = np.nanmedian(u) / np.nanmedian(y) * (np.nanpercentile(y, 95) - y) ** 2
-            u = u + self.top_factor * mod
+            u = u + factor * mod
 
         deg = sme.cscale_degree
         p0 = sme.cscale[segments]
