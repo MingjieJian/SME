@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 from os.path import dirname, join
 
+import matplotlib.pyplot as plt
 import numpy as np
 
+from pysme.continuum_and_radial_velocity import ContinuumNormalizationMatch
 from pysme.gui import plot_plotly
 from pysme.iliffe_vector import Iliffe_vector
 from pysme.sme import SME_Structure
@@ -10,14 +12,53 @@ from pysme.solve import SME_Solver, solve
 
 cwd = dirname(__file__)
 
-# fname = join(cwd, "results/55_Cnc_monh_teff_logg_vmic_vmac_vsini_fix3.sme")
+# fname = join(cwd, "results/55_Cnc_monh_teff_logg_vmic_vmac_vsini_fix.sme")
+# fname = join(cwd, "results/WASP-18_monh_teff_logg_vmic_vmac_vsini_fix.sme")
+# sme_me = SME_Structure.load(fname)
+
+# fname = join(cwd, "results/55_Cnc_monh_teff_logg_vmic_vmac_vsini_fix6.sme")
+# fname = join(cwd, "results/WASP-18_monh_teff_logg_vmic_vmac_vsini_fix4.sme")
+# sme_new = SME_Structure.load(fname)
+
 fname = join(cwd, "55_Cnc_tanja_out.sme")
 sme = SME_Structure.load(fname)
 
+# sme_me.cscale_flag = 1
+# i = 8
+# for i in range(6, 30):
+#     module = ContinuumNormalizationMatch()
+#     module.top_factor = 1_000
+#     cscale = module(
+#         sme_me,
+#         sme_me.wave[i],
+#         sme_me.synth[i],
+#         i,
+#     )
+#     x = sme_me.wave[i] - sme_me.wave[i, 0]
+#     cont = np.polyval(cscale[0], x)
 
-puncs = SME_Solver.estimate_uncertainties(
-    sme.fitresults.residuals, sme.fitresults.derivative
-)
+#     plt.plot(sme_me.wave[i].ravel(), sme_me.spec[i].ravel(), label="observation")
+#     plt.plot(sme_me.wave[i].ravel(), sme_me.synth[i].ravel(), label="PySME - Ansgar")
+#     plt.plot(
+#         sme_me.wave[i].ravel(),
+#         sme_me.synth[i] * cont,
+#         label=f"PySME - Ansgar - {module.top_factor}",
+#     )
+
+#     plt.plot(
+#         sme_new.wave[i].ravel(), sme_new.synth[i].ravel(), label="PySME - Ansgar 2"
+#     )
+
+#     # plt.plot(sme.wave.ravel(), sme.synth.ravel(), label="PySME - Tanja")
+#     plt.legend()
+#     # plt.xlim(5671, 5683)
+#     # plt.xlim(6430, 6444)
+#     plt.title(i)
+#     plt.show()
+
+# puncs = SME_Solver.estimate_uncertainties(
+#     sme.fitresults.residuals, sme.fitresults.derivative
+# )
 
 
 segments = np.where([sme.synth.shape[1] != 0])[1]

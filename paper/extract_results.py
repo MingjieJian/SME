@@ -22,7 +22,7 @@ targets = [
 cwd = dirname(__file__)
 
 for target in targets:
-    fname = join(cwd, f"results/{target}_monh_teff_logg_vmic_vmac_vsini_fix4.sme")
+    fname = join(cwd, f"results/{target}_monh_teff_logg_vmic_vmac_vsini_fix6.sme")
     jname = join(cwd, f"json/{target.lower()}.json")
     try:
         sme = SME_Structure.load(fname)

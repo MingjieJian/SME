@@ -10,14 +10,14 @@ from pysme.sme import SME_Structure
 if __name__ == "__main__":
     results_dir = join(dirname(__file__), "results")
     targets = [
-        "Eps_Eri_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
-        "HN_Peg_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
-        "HD_102195_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
-        "HD_130322_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
-        "HD_179949_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
-        "HD_189733_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
-        "55_Cnc_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
-        "WASP-18_monh_teff_logg_vmic_vmac_vsini_fix4.sme",
+        "Eps_Eri_monh_teff_logg_vmic_vmac_vsini_fix6.sme",
+        "HN_Peg_monh_teff_logg_vmic_vmac_vsini_fix6.sme",
+        "HD_102195_monh_teff_logg_vmic_vmac_vsini_fix6.sme",
+        "HD_130322_monh_teff_logg_vmic_vmac_vsini_fix6.sme",
+        "HD_179949_monh_teff_logg_vmic_vmac_vsini_fix6.sme",
+        "HD_189733_monh_teff_logg_vmic_vmac_vsini_fix6.sme",
+        "55_Cnc_monh_teff_logg_vmic_vmac_vsini_fix6.sme",
+        "WASP-18_monh_teff_logg_vmic_vmac_vsini_fix6.sme",
         # "AU_Mic_monh_teff_logg_vmic_vmac_vsini_fix.sme",
     ]
     names = np.array(

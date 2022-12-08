@@ -496,11 +496,11 @@ def fit(sme, target, segments="all", remove_outliers=False):
 
     # Save results
     fname = f"{target}_{'_'.join(fitparameters)}"
-    out_file = os.path.join(examples_dir, "results", fname + "_fix4.sme")
+    out_file = os.path.join(examples_dir, "results", fname + "_fix6.sme")
     sme.save(out_file)
 
     # plot
-    plot_file = os.path.join(examples_dir, "results", fname + "_fix4.html")
+    plot_file = os.path.join(examples_dir, "results", fname + "_fix6.html")
     fig = plot_plotly.FinalPlot(sme)
     fig.save(filename=plot_file, auto_open=False)
 
