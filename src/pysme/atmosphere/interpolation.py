@@ -353,10 +353,13 @@ class AtmosphereInterpolator:
             # After first pass ('TEMP'), adjust initial guess and restrict depth points.
             if ivtag == 0:
                 ipar = [pars[0, 0], 0.0, 0.0, 0.0]
-                igd = np.where(
-                    (depth1 >= min(depth2[igd]) + ipar[0])
-                    & (depth1 <= max(depth2[igd]) + ipar[0])
-                )[0]
+                try:
+                    igd = np.where(
+                        (depth1 >= min(depth2[igd]) + ipar[0])
+                        & (depth1 <= max(depth2[igd]) + ipar[0])
+                    )[0]
+                except IndexError:
+                    pass
                 if igd.size < 2:
                     raise AtmosphereError("unstable shift in temperature")
 
