@@ -113,6 +113,7 @@ class ValdFile(LineList):
         self.abund = None
         self.unit = None
         self.energy_unit = None
+        self.cdepth_range_paras = None
         linelist = self.loads(filename)
 
         super().__init__(

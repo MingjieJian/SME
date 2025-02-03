@@ -10,7 +10,7 @@ PySME documentation
    :maxdepth: 1
    :caption: Contents:
 
-   usage/installation
+   Installation <usage/installation>
    usage/quickstart
    usage/sme_struct
    usage/linelist

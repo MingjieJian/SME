@@ -135,7 +135,7 @@ class SME_Solver:
             pass
 
     def _residuals(
-        self, param, sme, spec, uncs, mask, segments="all", isJacobian=False, **_
+        self, param, sme, spec, uncs, mask, segments="all", isJacobian=False, linelist_mode='all', **_
     ):
         """
         Calculates the synthetic spectrum with sme_func and
@@ -194,9 +194,10 @@ class SME_Solver:
                 updateStructure=update,
                 reuse_wavelength_grid=reuse_wavelength_grid,
                 segments=segments,
-                passLineList=False,
+                passLineList=True,
                 updateLineList=self.update_linelist,
                 radial_velocity_mode=radial_velocity_mode,
+                linelist_mode=linelist_mode
             )
         except AtmosphereError as ae:
             # Something went wrong (left the grid? Don't go there)
@@ -250,6 +251,7 @@ class SME_Solver:
         segments="all",
         step_sizes=None,
         method="2-point",
+        linelist_mode='all',
         **_,
     ):
         """
@@ -276,7 +278,7 @@ class SME_Solver:
             abs_step=step_sizes,
             bounds=bounds,
             args=args,
-            kwargs={"isJacobian": True, "segments": segments},
+            kwargs={"isJacobian": True, "segments": segments, "linelist_mode": linelist_mode},
         )
 
         if not np.all(np.isfinite(g)):
@@ -607,7 +609,7 @@ class SME_Solver:
                 )
         return param_names
 
-    def solve(self, sme, param_names=None, segments="all", bounds=None, step_sizes=None, dynamic_param=None):
+    def solve(self, sme, param_names=None, segments="all", bounds=None, step_sizes=None, dynamic_param=None, linelist_mode='all'):
         """
         Find the least squares fit parameters to an observed spectrum
 
@@ -726,7 +728,7 @@ class SME_Solver:
                 f" ; Linelist range: {sme.linelist.wlcent.min()} - {sme.linelist.wlcent.max()} Å"
             )
 
-        # Setup LineList only once
+        # Setup LineList only once (Mingjie: not needed?)
         dll = self.synthesizer.get_dll()
         dll.SetLibraryPath()
         _ = dll.InputLineList(sme.linelist)
@@ -761,6 +763,7 @@ class SME_Solver:
                         "segments": segments,
                         "step_sizes": step_sizes,
                         "method": sme.leastsquares_jac,
+                        "linelist_mode": linelist_mode
                     },
                 )
                 # The jacobian is altered by the loss function
