@@ -185,8 +185,13 @@ class SME_Solver:
         # change dynamic parameters
         if self.dynamic_param is not None:
             for name in self.dynamic_param.keys():
-                sme[name] = self.dynamic_param[name](sme)
-                print(f'Changing dynamic parameter {name} to {sme[name]:.2f}.')
+                if 'abund' in name:
+                    abund_name = name.split()[1]
+                    sme.abund[abund_name] = self.dynamic_param[name](sme) - sme.monh
+                    print(f'Changing dynamic parameter {name} to {sme.abund[abund_name]:.2f}.')
+                else:
+                    sme[name] = self.dynamic_param[name](sme)
+                    print(f'Changing dynamic parameter {name} to {sme[name]:.2f}.')
         # run spectral synthesis
         try:
             result = self.synthesizer.synthesize_spectrum(
