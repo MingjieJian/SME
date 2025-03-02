@@ -247,11 +247,13 @@ class LineList(IPersist):
             return getattr(self, index)
         if isinstance(index, (list, str)):
             if len(index) == 0:
-                return LineList(
+                return_list = LineList(
                     self._lines.iloc[[]],
                     lineformat=self.lineformat,
                     medium=self.medium,
                 )
+                return_list.cdepth_range_paras = self.cdepth_range_paras
+                return return_list
             values = self._lines[index].values
             if index in self.string_columns:
                 values = values.astype(str)
@@ -260,9 +262,11 @@ class LineList(IPersist):
             if isinstance(index, int):
                 index = slice(index, index + 1)
             # just pass on a subsection of the linelist data, but keep it a linelist object
-            return LineList(
+            return_list =  LineList(
                 self._lines.iloc[index], self.lineformat, medium=self.medium
             )
+            return_list.cdepth_range_paras = self.cdepth_range_paras
+            return return_list
 
     def __getattribute__(self, name):
         if name[0] != "_" and name not in dir(self) and name in self._lines:
