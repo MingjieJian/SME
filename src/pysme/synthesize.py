@@ -481,7 +481,6 @@ class Synthesizer:
         sme,
         segments="all",
         passLineList=True,
-        linelist_mode='all', # all or auto
         passAtmosphere=True,
         passNLTE=True,
         updateStructure=True,
@@ -489,6 +488,10 @@ class Synthesizer:
         reuse_wavelength_grid=False,
         radial_velocity_mode="robust",
         dll_id=None,
+        linelist_mode='all',
+        line_margin=0,
+        strong_line_margin=0, 
+        strong_line_element=['H', 'Mg', 'Ca', 'Na']
     ):
         """
         Calculate the synthetic spectrum based on the parameters passed in the SME structure
@@ -558,6 +561,7 @@ class Synthesizer:
         wmod = [[] for _ in range(n_segments)]
         central_depth = [[] for _ in range(n_segments)]
         line_range = [[] for _ in range(n_segments)]
+        # in_sub_list_mask  = [[] for _ in range(n_segments)]
 
         # If wavelengths are already defined use those as output
         if "wave" in sme:
@@ -590,7 +594,6 @@ class Synthesizer:
         #   Calculate spectral synthesis for each
         #   Interpolate onto geomspaced wavelength grid
         #   Apply instrumental and turbulence broadening
-
         for il in tqdm(segments, desc="Segments", leave=False, disable=~show_progress_bars):
             wmod[il], smod[il], cmod[il], central_depth[il], line_range[il] = self.synthesize_segment(
                 sme,
@@ -604,7 +607,6 @@ class Synthesizer:
                 passNLTE=passNLTE,
                 linelist_mode=linelist_mode
             )
-
         for il in segments:
             if "wave" not in sme or len(sme.wave[il]) == 0:
                 # trim padding
@@ -857,7 +859,7 @@ class Synthesizer:
         sub_sme_init.teff, sub_sme_init.logg, sub_sme_init.monh, sub_sme_init.vmic, sub_sme_init.vmac, sub_sme_init.vsini = sme.teff, sme.logg, sme.monh, sme.vmic, sme.vmac, sme.vsini
         sub_sme_init.wave = np.arange(5000, 5010, 1)
         sub_sme_init.linelist = None
-        for i in tqdm(range(N_chunk)):
+        for i in range(N_chunk):
             sub_sme.append(deepcopy(sub_sme_init))
             sub_sme[i].linelist = sub_linelist[i]
             

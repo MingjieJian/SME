@@ -299,7 +299,7 @@ class SME_Structure(Parameters):
         self.cdr_parallel = True
         self.cdr_n_jobs = 10
         self.cdr_pysme_out = False
-        self.cdr_depth_thres = 0.1
+        self.cdr_depth_thres = 0.0
 
         self.meta["object"] = kwargs.get("obs_name", "")
         try:

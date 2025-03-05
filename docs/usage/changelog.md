@@ -4,9 +4,13 @@ This page stores the change log for pysme since May 2024.
 
 ## In-development
 
+- (model) modify the atmosphere geometry to '' for auto desicion instead of 'PP'.
+
 ## In github-repo
 
-- (synthesize) synthesize function now support calculating line central-depth and range, and can use it to select only the relevant lines in synthesize (and thus in solve). 
+## 0.4.189
+
+- (synthesize) synthesize function now support calculating line central-depth and line range, and can use it to select only the relevant lines in synthesize (and thus in solve). 
 - (solve) dynamic parameter function now support abundances.
 
 ## v0.4.187

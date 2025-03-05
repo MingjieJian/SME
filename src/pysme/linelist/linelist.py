@@ -441,7 +441,7 @@ class LineList(IPersist):
         self.sort()
         return self
 
-    def trim(self, wave_min, wave_max, rvel=None):
+    def trim(self, wave_min, wave_max, vrad=None, strong_line_margin=0, strong_line_element=['H', 'Mg', 'Ca', 'Na']):
         """Remove lines from the linelist outside the specified
         wavelength range
 
@@ -451,21 +451,31 @@ class LineList(IPersist):
             lower wavelength limit in Angstrom
         wave_max : float
             upper wavelength limit in Angstrom
-        rvel : float, optional
+        vrad : float, optional
             add an additional buffer on each side, corresponding to this radial velocity, by default None
-
+        strong_line_margin : float, optional
+            keep the strong line in the range of wave_min-strong_line_margin, wave_max+strong_line_margin.
+        strong_line_element : list, optional
+            The element of lines to be classified as strong lines.
+            
         Returns
         -------
         LineList
             trimmed linelist
         """
-        if rvel is not None:
+        if vrad is not None:
             # Speed of light in km/s
             c_light = constants.c * 1e3
-            wave_min *= np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
-            wave_max *= np.sqrt((1 + rvel / c_light) / (1 - rvel / c_light))
-        selection = self._lines["wlcent"] > wave_min
-        selection &= self._lines["wlcent"] < wave_max
+            wave_min *= np.sqrt((1 - vrad / c_light) / (1 + vrad / c_light))
+            wave_max *= np.sqrt((1 + vrad / c_light) / (1 - vrad / c_light))
+        selection = (self._lines["wlcent"] > wave_min) & (self._lines["wlcent"] < wave_max)
+        strong_selection = (self._lines["wlcent"] > wave_min-strong_line_margin) & (self._lines["wlcent"] < wave_max+strong_line_margin)
+        species = self._lines['species'].apply(lambda x: x.split(' ')[0])
+        strong_species_selection = species.values == ''
+        for ele in strong_line_element:
+            strong_species_selection |= (species.values == ele)
+        selection = selection | (strong_selection & strong_species_selection)
+        # print(self._lines[strong_selection])
         if not np.any(selection):
             logger.warning("Trimmed linelist is empty")
         return LineList(
