@@ -7,6 +7,7 @@ This page stores the change log for pysme since May 2024.
 ## In github-repo
 
 - (synthesize) synthesize function now support calculating line central-depth and range, and can use it to select only the relevant lines in synthesize (and thus in solve). 
+- (solve) dynamic parameter function now support abundances.
 
 ## v0.4.187
 
