@@ -10,7 +10,7 @@ This page stores the change log for pysme since May 2024.
 
 ## v0.4.187
 
-- Latest NLTE grids available.
+- NLTE grids (from Amarsi et al. 2020) set as default grids.
 
 ## v0.4.184
 
