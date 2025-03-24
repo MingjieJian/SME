@@ -30,6 +30,8 @@ from copy import deepcopy
 from pqdm.processes import pqdm
 from tqdm import tqdm
 
+import pickle
+
 # Temp solution
 import pandas as pd
 pd.options.mode.chained_assignment = None  # None means no warning will be shown
@@ -585,7 +587,7 @@ class Synthesizer:
         # Calculate the line central depth and line range if necessary
         if linelist_mode == 'auto':
             logger.info(f'linelist mode: {linelist_mode}')
-            if not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= 500 or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= 1) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= 0.5):
+            if sme.linelist.cdepth_range_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= 500 or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= 1) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= 0.5):
                 logger.info(f'Updating linelist central depth and line range.')
                 sme = self.update_cdf(sme)
 
@@ -758,8 +760,9 @@ class Synthesizer:
                 # Check if the current stellar parameters are within the range of that in the linelist
                 if np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= 500 or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= 1) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= 0.5): 
                     logger.warning(f'The current stellar parameters are out of the range (+-500K, +- 1 or +-0.5) of that used to calculate the central depth and ranges of the linelist. \n Current stellar parameters: Teff: {sme.teff}, logg: {sme.logg}, monh: {sme.monh}. Linelist parameters: Teff: {sme.linelist.cdepth_range_paras[0]}, logg: {sme.linelist.cdepth_range_paras[1]}, monh: {sme.linelist.cdepth_range_paras[2]}.')
-                indices = (~((sme.linelist['line_range_e'] < wbeg - line_margin) | (sme.linelist['line_range_s'] > wend + line_margin))) & (sme.linelist['central_depth'] > sme.cdr_depth_thres)
+                indices = (~((sme.linelist['line_range_e'] < wbeg - line_margin-2) | (sme.linelist['line_range_s'] > wend + line_margin+2))) & (sme.linelist['central_depth'] > sme.cdr_depth_thres)
                 _ = dll.InputLineList(sme.linelist[indices])
+                sme.linelist._lines['use_indices'] = indices
         if hasattr(updateLineList, "__len__") and len(updateLineList) > 0:
             # TODO Currently Updates the whole linelist, could be improved to only change affected lines
             dll.UpdateLineList(sme.atomic, sme.species, updateLineList)
@@ -842,9 +845,6 @@ class Synthesizer:
         
         N_line_chunk, parallel, n_jobs, pysme_out = sme.cdr_N_line_chunk, sme.cdr_parallel, sme.cdr_n_jobs, sme.cdr_pysme_out
 
-        # Remove dupliate lines from the line list
-        sme.linelist._lines = sme.linelist._lines.drop_duplicates(subset=['species', 'wlcent', 'gflog', 'excit', 'j_lo', 'e_upp', 'j_up', 'lande_lower', 'lande_upper', 'lande', 'gamrad', 'gamqst', 'gamvw'])
-
         # Decide how many chunks to be divided
         N_chunk = int(np.ceil(len(sme.linelist) / N_line_chunk))
 
@@ -891,15 +891,17 @@ class Synthesizer:
         for column in ['central_depth', 'line_range_s', 'line_range_e']:
             if column in sme.linelist.columns:
                 sme.linelist._lines = sme.linelist._lines.drop(column, axis=1)
-        sme.linelist._lines = pd.merge(sme.linelist._lines, stack_linelist._lines[['species', 'wlcent', 'gflog', 'excit', 'j_lo', 'e_upp', 'j_up', 'lande_lower', 'lande_upper', 'lande', 'gamrad', 'gamqst', 'gamvw', 'central_depth', 'line_range_s', 'line_range_e']], on=['species', 'wlcent', 'gflog', 'excit', 'j_lo', 'e_upp', 'j_up', 'lande_lower', 'lande_upper', 'lande', 'gamrad', 'gamqst', 'gamvw'], how='left')
+        for column in ['central_depth', 'line_range_s', 'line_range_e']:
+            sme.linelist._lines[column] = stack_linelist._lines[column]
+        pickle.dump([sme.linelist._lines, stack_linelist._lines], open('linelist.pkl', 'wb'))
 
         # Manually change the depth of all H 1 lines to 1, to include them back.
         sme.linelist._lines.loc[sme.linelist['species'] == 'H 1', 'central_depth'] = 1 
 
         # Manually change the 2000 line_range to 0.01.
-        indices = np.abs(sme.linelist['line_range_e'] - sme.linelist['line_range_s']-2000) < 0.1
-        sme.linelist._lines.loc[indices, 'line_range_s'] = sme.linelist._lines.loc[indices, 'wlcent']-0.005
-        sme.linelist._lines.loc[indices, 'line_range_e'] = sme.linelist._lines.loc[indices, 'wlcent']+0.005
+        indices = np.abs(sme.linelist['line_range_e'] - sme.linelist['line_range_s']-2000) < 0.5
+        sme.linelist._lines.loc[indices, 'line_range_s'] = sme.linelist._lines.loc[indices, 'wlcent']-0.5
+        sme.linelist._lines.loc[indices, 'line_range_e'] = sme.linelist._lines.loc[indices, 'wlcent']+0.5
 
         # Write the stellar parameters used here to the line list
         sme.linelist.cdepth_range_paras = [sme.teff, sme.logg, sme.monh, sme.vmic]
