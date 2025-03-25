@@ -295,6 +295,12 @@ class SME_Structure(Parameters):
         self.mask = kwargs.get("mob", None)
         self.synth = kwargs.get("smod", None)
 
+        self.cdr_N_line_chunk = 2000
+        self.cdr_parallel = True
+        self.cdr_n_jobs = 10
+        self.cdr_pysme_out = False
+        self.cdr_depth_thres = 0.0
+
         self.meta["object"] = kwargs.get("obs_name", "")
         try:
             self.linelist = LineList(**kwargs)

@@ -23,7 +23,7 @@ sys.path.insert(0, src_dir + "/src")
 # -- Project information -----------------------------------------------------
 
 project = "SME"
-copyright = "2018, Jeff Valenti, Nikolai Piskunov, Ansgar Wehrhahn, Mingjie Jian"
+copyright = "2025, Jeff Valenti, Nikolai Piskunov, Ansgar Wehrhahn, Mingjie Jian"
 author = "Jeff Valenti, Nikolai Piskunov, Ansgar Wehrhahn, Mingjie Jian"
 
 # The short X.Y version

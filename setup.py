@@ -86,6 +86,7 @@ setup(
         "pandas",
         "wget",
         "tqdm",
+        "pqdm",
         "colorlog",
         "emcee",
         "pybtex",

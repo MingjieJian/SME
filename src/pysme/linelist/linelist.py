@@ -247,11 +247,13 @@ class LineList(IPersist):
             return getattr(self, index)
         if isinstance(index, (list, str)):
             if len(index) == 0:
-                return LineList(
+                return_list = LineList(
                     self._lines.iloc[[]],
                     lineformat=self.lineformat,
                     medium=self.medium,
                 )
+                return_list.cdepth_range_paras = self.cdepth_range_paras
+                return return_list
             values = self._lines[index].values
             if index in self.string_columns:
                 values = values.astype(str)
@@ -260,9 +262,11 @@ class LineList(IPersist):
             if isinstance(index, int):
                 index = slice(index, index + 1)
             # just pass on a subsection of the linelist data, but keep it a linelist object
-            return LineList(
+            return_list =  LineList(
                 self._lines.iloc[index], self.lineformat, medium=self.medium
             )
+            return_list.cdepth_range_paras = self.cdepth_range_paras
+            return return_list
 
     def __getattribute__(self, name):
         if name[0] != "_" and name not in dir(self) and name in self._lines:
@@ -392,16 +396,24 @@ class LineList(IPersist):
             broadening factor van der Waals
         """
 
-        linedata = {
-            "species": species,
-            "wlcent": wlcent,
-            "excit": excit,
-            "gflog": gflog,
-            "gamrad": gamrad,
-            "gamqst": gamqst,
-            "gamvw": gamvw,
-        }
-        self._lines = self._lines.append([linedata])
+        atom_number = 1.0
+        ionization = float(species.split()[1])
+        if len(self._lines) == 0:
+            linedata = {
+                "species": [species],
+                "wlcent": [wlcent],
+                "excit": [excit],
+                "gflog": [gflog],
+                "gamrad": [gamrad],
+                "gamqst": [gamqst],
+                "gamvw": [gamvw],
+                "atom_number": [atom_number],
+                'ionization': [ionization]
+            }
+            self._lines = pd.DataFrame.from_dict(linedata)
+        else:
+            linedata = [species, wlcent, excit, gflog, gamrad, gamqst, gamvw, atom_number, ionization]
+            self._lines.loc[len(self._lines)] = linedata
 
     def append(self, linelist: "LineList"):
         """
@@ -437,7 +449,7 @@ class LineList(IPersist):
         self.sort()
         return self
 
-    def trim(self, wave_min, wave_max, rvel=None):
+    def trim(self, wave_min, wave_max, vrad=None, strong_line_margin=0, strong_line_element=['H', 'Mg', 'Ca', 'Na']):
         """Remove lines from the linelist outside the specified
         wavelength range
 
@@ -447,21 +459,31 @@ class LineList(IPersist):
             lower wavelength limit in Angstrom
         wave_max : float
             upper wavelength limit in Angstrom
-        rvel : float, optional
+        vrad : float, optional
             add an additional buffer on each side, corresponding to this radial velocity, by default None
-
+        strong_line_margin : float, optional
+            keep the strong line in the range of wave_min-strong_line_margin, wave_max+strong_line_margin.
+        strong_line_element : list, optional
+            The element of lines to be classified as strong lines.
+            
         Returns
         -------
         LineList
             trimmed linelist
         """
-        if rvel is not None:
+        if vrad is not None:
             # Speed of light in km/s
             c_light = constants.c * 1e3
-            wave_min *= np.sqrt((1 - rvel / c_light) / (1 + rvel / c_light))
-            wave_max *= np.sqrt((1 + rvel / c_light) / (1 - rvel / c_light))
-        selection = self._lines["wlcent"] > wave_min
-        selection &= self._lines["wlcent"] < wave_max
+            wave_min *= np.sqrt((1 - vrad / c_light) / (1 + vrad / c_light))
+            wave_max *= np.sqrt((1 + vrad / c_light) / (1 - vrad / c_light))
+        selection = (self._lines["wlcent"] > wave_min) & (self._lines["wlcent"] < wave_max)
+        strong_selection = (self._lines["wlcent"] > wave_min-strong_line_margin) & (self._lines["wlcent"] < wave_max+strong_line_margin)
+        species = self._lines['species'].apply(lambda x: x.split(' ')[0])
+        strong_species_selection = species.values == ''
+        for ele in strong_line_element:
+            strong_species_selection |= (species.values == ele)
+        selection = selection | (strong_selection & strong_species_selection)
+        # print(self._lines[strong_selection])
         if not np.any(selection):
             logger.warning("Trimmed linelist is empty")
         return LineList(

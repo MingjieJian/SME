@@ -4,11 +4,19 @@ This page stores the change log for pysme since May 2024.
 
 ## In-development
 
+- (model) modify the atmosphere geometry to '' for auto desicion instead of 'PP'.
+
 ## In github-repo
+
+## 0.4.189
+
+- (synthesize) synthesize function now support calculating line central-depth and line range, and can use it to select only the relevant lines in synthesize (and thus in solve). 
+    - Available in both LTE and NLTE calculation.
+- (solve) dynamic parameter function now support abundances.
 
 ## v0.4.187
 
-- Latest NLTE grids available.
+- NLTE grids (from Amarsi et al. 2020) set as default grids.
 
 ## v0.4.184
 

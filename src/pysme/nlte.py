@@ -17,6 +17,8 @@ from .abund import elements as abund_elem
 from .data_structure import Collection, CollectionFactory, array, astype, oneof, this
 from .util import show_progress_bars
 
+import pickle
+
 logger = logging.getLogger(__name__)
 
 
@@ -266,10 +268,19 @@ class Grid:
     ):
         #:str: Element of the NLTE grid
         self.elem = elem
-        #:LineList: Whole LineList that was passed to the C library
-        self.linelist = sme.linelist
-        #:array(str): Elemental Species Names for the linelist
-        self.species = sme.linelist.species
+
+        if 'use_indices' in sme.linelist._lines.columns:
+            #:LineList: Whole LineList that was passed to the C library
+            self.linelist = sme.linelist[sme.linelist['use_indices']]
+            #:array(str): Elemental Species Names for the linelist
+            self.species = sme.linelist.species[sme.linelist['use_indices']]
+            sme.linelist._lines = sme.linelist._lines.drop(columns=['use_indices'])
+        else:
+            #:LineList: Whole LineList that was passed to the C library
+            self.linelist = sme.linelist
+            #:array(str): Elemental Species Names for the linelist
+            self.species = sme.linelist.species
+
         #:str: Name of the grid
         self.grid_name = sme.nlte.grids[elem]
         #:str: complete filename of the NLTE grid data file
@@ -1082,7 +1093,7 @@ class NLTE(Collection):
             raise ValueError(f"Element {elem} has not been prepared for NLTE")
 
         # The grids are cached in the NLTE object, but not saved
-        if elem in self.grid_data.keys():
+        if elem in self.grid_data.keys() and 'use_indices' not in sme.linelist._lines.columns:
             grid = self.grid_data[elem]
         else:
             grid = Grid(

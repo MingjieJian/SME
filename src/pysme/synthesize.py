@@ -23,6 +23,14 @@ from .large_file_storage import setup_lfs
 from .sme import MASK_VALUES
 from .sme_synth import SME_DLL
 from .util import show_progress_bars
+from .sme import SME_Structure
+
+from contextlib import redirect_stdout
+from copy import deepcopy
+from pqdm.processes import pqdm
+from tqdm import tqdm
+
+import pickle
 
 # Temp solution
 import pandas as pd
@@ -475,7 +483,6 @@ class Synthesizer:
         sme,
         segments="all",
         passLineList=True,
-        linelist_mode='all',
         passAtmosphere=True,
         passNLTE=True,
         updateStructure=True,
@@ -483,6 +490,10 @@ class Synthesizer:
         reuse_wavelength_grid=False,
         radial_velocity_mode="robust",
         dll_id=None,
+        linelist_mode='all',
+        line_margin=0,
+        strong_line_margin=0, 
+        strong_line_element=['H', 'Mg', 'Ca', 'Na']
     ):
         """
         Calculate the synthetic spectrum based on the parameters passed in the SME structure
@@ -552,6 +563,7 @@ class Synthesizer:
         wmod = [[] for _ in range(n_segments)]
         central_depth = [[] for _ in range(n_segments)]
         line_range = [[] for _ in range(n_segments)]
+        # in_sub_list_mask  = [[] for _ in range(n_segments)]
 
         # If wavelengths are already defined use those as output
         if "wave" in sme:
@@ -561,37 +573,42 @@ class Synthesizer:
 
         # Input Model data to C library
         dll.SetLibraryPath()
-        if passLineList:
-            line_ion_mask = dll.InputLineList(sme.linelist)
-            sme.line_ion_mask = line_ion_mask
-        if hasattr(updateLineList, "__len__") and len(updateLineList) > 0:
-            # TODO Currently Updates the whole linelist, could be improved to only change affected lines
-            dll.UpdateLineList(sme.atomic, sme.species, updateLineList)
+        
         if passAtmosphere:
             sme = self.get_atmosphere(sme)
             dll.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)
             dll.InputAbund(sme.abund)
-            dll.Ionization(0)
-            dll.SetVWscale(sme.gam6)
-            dll.SetH2broad(sme.h2broad)
-        if passNLTE:
-            sme.nlte.update_coefficients(sme, dll, self.lfs_nlte)
+        #     dll.Ionization(0)
+        #     dll.SetVWscale(sme.gam6)
+        #     dll.SetH2broad(sme.h2broad)
+        # if passNLTE:
+        #     sme.nlte.update_coefficients(sme, dll, self.lfs_nlte)
+
+        # Calculate the line central depth and line range if necessary
+        if linelist_mode == 'auto':
+            logger.info(f'linelist mode: {linelist_mode}')
+            if sme.linelist.cdepth_range_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= 500 or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= 1) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= 0.5):
+                logger.info(f'Updating linelist central depth and line range.')
+                sme = self.update_cdf(sme)
 
         # Loop over segments
         #   Input Wavelength range and Opacity
         #   Calculate spectral synthesis for each
         #   Interpolate onto geomspaced wavelength grid
         #   Apply instrumental and turbulence broadening
-
         for il in tqdm(segments, desc="Segments", leave=False, disable=~show_progress_bars):
             wmod[il], smod[il], cmod[il], central_depth[il], line_range[il] = self.synthesize_segment(
                 sme,
                 il,
                 reuse_wavelength_grid,
                 il != segments[0],
-                dll_id=dll_id
+                dll_id=dll_id,
+                passLineList=passLineList,
+                updateLineList=updateLineList,
+                passAtmosphere=passAtmosphere,
+                passNLTE=passNLTE,
+                linelist_mode=linelist_mode
             )
-
         for il in segments:
             if "wave" not in sme or len(sme.wave[il]) == 0:
                 # trim padding
@@ -643,27 +660,25 @@ class Synthesizer:
                 sme.synth = smod
             if "cont" not in sme:
                 sme.cont = cmod
-            if "line_range" not in sme:
-                sme.line_range = line_range
 
             for s in segments:
                 sme.wave[s] = wave[s]
                 sme.synth[s] = smod[s]
                 sme.cont[s] = cmod[s]
                 # sme.central_depth[s] = central_depth[s]
-                sme.line_range[s] = line_range[s]
+                # sme.line_range[s] = line_range[s]
 
             if passLineList:
-                sme.central_depth = central_depth
-                for s in segments:
-                    # To do: modify to let linelist also can accept segments.
-                    if len(central_depth[s] > 0):
-                        sme.linelist._lines.loc[~line_ion_mask, 'central_depth'] = central_depth[s]
-                        sme.linelist._lines.loc[line_ion_mask, 'central_depth'] = np.nan
-                        sme.linelist._lines.loc[~line_ion_mask, 'line_range_s'] = line_range[s][:, 0]
-                        sme.linelist._lines.loc[~line_ion_mask, 'line_range_e'] = line_range[s][:, 1]
-                        sme.linelist._lines.loc[line_ion_mask, 'line_range_s'] = np.nan
-                        sme.linelist._lines.loc[line_ion_mask, 'line_range_e'] = np.nan
+                if linelist_mode == 'all':
+                    for s in segments:
+                        # To do: modify to let linelist also can accept segments.
+                        if len(central_depth[s] > 0):
+                            sme.linelist._lines.loc[~sme.line_ion_mask, 'central_depth'] = central_depth[s]
+                            sme.linelist._lines.loc[sme.line_ion_mask, 'central_depth'] = np.nan
+                            sme.linelist._lines.loc[~sme.line_ion_mask, 'line_range_s'] = line_range[s][:, 0]
+                            sme.linelist._lines.loc[~sme.line_ion_mask, 'line_range_e'] = line_range[s][:, 1]
+                            sme.linelist._lines.loc[sme.line_ion_mask, 'line_range_s'] = np.nan
+                            sme.linelist._lines.loc[sme.line_ion_mask, 'line_range_e'] = np.nan
 
             if sme.cscale_type in ["spline", "spline+mask"]:
                 sme.cscale = np.asarray(cscale)
@@ -697,7 +712,11 @@ class Synthesizer:
         keep_line_opacity=False,
         dll_id=None,
         passLineList=True,
-        linelist_mode='all'
+        updateLineList=False,
+        passAtmosphere=True,
+        passNLTE=True,
+        linelist_mode='all',
+        line_margin=2
     ):
         """Create the synthetic spectrum of a single segment
 
@@ -724,7 +743,7 @@ class Synthesizer:
             The Flux of the synthesized spectrum
         cont_flux : array of shape (npoints,)
             The continuum Flux of the synthesized spectrum
-        """
+        """        
         logger.debug("Segment %i out of %i", segment, sme.nseg)
         dll = self.get_dll(dll_id)
 
@@ -732,14 +751,34 @@ class Synthesizer:
         vrad_seg = sme.vrad[segment] if sme.vrad[segment] is not None else 0
         wbeg, wend = self.get_wavelengthrange(sme.wran[segment], vrad_seg, sme.vsini)
 
-        # # Input the line list as required
-        # if passLineList:
-        #     print('Pass line list.')
-        #     if linelist_mode == 'chunk':
-        #         print('Linelist: chunk')
-        #         print()
-        #         indices = (sme.linelist['wlcent'] >= wbeg) & (sme.linelist['wlcent'] <= wend)
-        #         dll.InputLineList(sme.linelist[indices])
+        if passLineList:
+            if linelist_mode == 'all':
+                line_ion_mask = dll.InputLineList(sme.linelist)
+                # print(sme.linelist)
+                sme.line_ion_mask = line_ion_mask
+            elif linelist_mode == 'auto':
+                # Check if the current stellar parameters are within the range of that in the linelist
+                if np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= 500 or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= 1) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= 0.5): 
+                    logger.warning(f'The current stellar parameters are out of the range (+-500K, +- 1 or +-0.5) of that used to calculate the central depth and ranges of the linelist. \n Current stellar parameters: Teff: {sme.teff}, logg: {sme.logg}, monh: {sme.monh}. Linelist parameters: Teff: {sme.linelist.cdepth_range_paras[0]}, logg: {sme.linelist.cdepth_range_paras[1]}, monh: {sme.linelist.cdepth_range_paras[2]}.')
+                
+                v_broad = np.sqrt(sme.vmic**2 + sme.vmac**2 + sme.vsini**2)
+                del_wav = v_broad * sme.linelist['wlcent'] / clight
+                del_wav += sme.linelist['wlcent'] / sme.ipres
+                indices = (~((sme.linelist['line_range_e'] < wbeg - del_wav - line_margin) | (sme.linelist['line_range_s'] > wend + del_wav + line_margin))) & (sme.linelist['central_depth'] > sme.cdr_depth_thres)
+                _ = dll.InputLineList(sme.linelist[indices])
+                sme.linelist._lines['use_indices'] = indices
+        if hasattr(updateLineList, "__len__") and len(updateLineList) > 0:
+            # TODO Currently Updates the whole linelist, could be improved to only change affected lines
+            dll.UpdateLineList(sme.atomic, sme.species, updateLineList)
+        if passAtmosphere:
+            sme = self.get_atmosphere(sme)
+            dll.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)
+            dll.InputAbund(sme.abund)
+            dll.Ionization(0)
+            dll.SetVWscale(sme.gam6)
+            dll.SetH2broad(sme.h2broad)
+        if passNLTE:
+            sme.nlte.update_coefficients(sme, dll, self.lfs_nlte)        
 
         dll.InputWaveRange(wbeg, wend)
         dll.Opacity()
@@ -756,7 +795,7 @@ class Synthesizer:
             sme.mu,
             accrt=sme.accrt,  # threshold line opacity / cont opacity
             accwi=sme.accwi,
-            keep_lineop=keep_line_opacity,
+            keep_lineop=False,
             wave=wint_seg,
         )
 
@@ -801,8 +840,78 @@ class Synthesizer:
         line_range = dll.GetLineRange()
 
         return wint, sint, cint, central_depth, line_range
+    
+    def update_cdf(self, sme):
+        '''
+        Update or get the central depth and wavelength range of a line list.
+        Author: Mingjie Jian
+        '''
+        
+        N_line_chunk, parallel, n_jobs, pysme_out = sme.cdr_N_line_chunk, sme.cdr_parallel, sme.cdr_n_jobs, sme.cdr_pysme_out
 
+        # Decide how many chunks to be divided
+        N_chunk = int(np.ceil(len(sme.linelist) / N_line_chunk))
 
-def synthesize_spectrum(sme, segments="all", **args):
+        # Divide the line list to sub line lists
+        sub_linelist = [sme.linelist[N_line_chunk*i:N_line_chunk*(i+1)] for i in range(N_chunk)]
+
+        if sum(len(item) for item in sub_linelist) != len(sme.linelist):
+            raise ValueError
+        
+        sub_sme = []
+        sub_sme_init = SME_Structure()
+        sub_sme_init.teff, sub_sme_init.logg, sub_sme_init.monh, sub_sme_init.vmic, sub_sme_init.vmac, sub_sme_init.vsini = sme.teff, sme.logg, sme.monh, sme.vmic, sme.vmac, sme.vsini
+        sub_sme_init.wave = np.arange(5000, 5010, 1)
+        sub_sme_init.linelist = None
+        for i in range(N_chunk):
+            sub_sme.append(deepcopy(sub_sme_init))
+            sub_sme[i].linelist = sub_linelist[i]
+            
+            if not parallel:
+                if pysme_out:
+                    print(type(sub_sme[i]))
+                    sub_sme[i] = self.synthesize_spectrum(sub_sme[i])
+                else:
+                    with redirect_stdout(open(f"/dev/null", 'w')):
+                        sub_sme[i] = self.synthesize_spectrum(sub_sme[i])
+        # return sub_sme
+        if parallel:
+            if pysme_out:
+                sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+            else:
+                with redirect_stdout(open(f"/dev/null", 'w')):
+                    sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+
+        # Get the central depth
+        for i in range(N_chunk):
+            sub_linelist[i] = sub_sme[i].linelist
+
+        stack_linelist = deepcopy(sub_linelist[0])
+        stack_linelist._lines = pd.concat([ele._lines for ele in sub_linelist])
+
+        # Remove
+        if len(stack_linelist) != len(sme.linelist):
+            raise ValueError
+        for column in ['central_depth', 'line_range_s', 'line_range_e']:
+            if column in sme.linelist.columns:
+                sme.linelist._lines = sme.linelist._lines.drop(column, axis=1)
+        for column in ['central_depth', 'line_range_s', 'line_range_e']:
+            sme.linelist._lines[column] = stack_linelist._lines[column]
+        pickle.dump([sme.linelist._lines, stack_linelist._lines], open('linelist.pkl', 'wb'))
+
+        # Manually change the depth of all H 1 lines to 1, to include them back.
+        sme.linelist._lines.loc[sme.linelist['species'] == 'H 1', 'central_depth'] = 1 
+
+        # Manually change the 2000 line_range to 0.01.
+        indices = np.abs(sme.linelist['line_range_e'] - sme.linelist['line_range_s']-2000) < 0.5
+        sme.linelist._lines.loc[indices, 'line_range_s'] = sme.linelist._lines.loc[indices, 'wlcent']-0.5
+        sme.linelist._lines.loc[indices, 'line_range_e'] = sme.linelist._lines.loc[indices, 'wlcent']+0.5
+
+        # Write the stellar parameters used here to the line list
+        sme.linelist.cdepth_range_paras = [sme.teff, sme.logg, sme.monh, sme.vmic]
+
+        return sme
+
+def synthesize_spectrum(sme, segments="all",**args):
     synthesizer = Synthesizer()
     return synthesizer.synthesize_spectrum(sme, segments, **args)
