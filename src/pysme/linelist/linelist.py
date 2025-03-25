@@ -396,16 +396,24 @@ class LineList(IPersist):
             broadening factor van der Waals
         """
 
-        linedata = {
-            "species": species,
-            "wlcent": wlcent,
-            "excit": excit,
-            "gflog": gflog,
-            "gamrad": gamrad,
-            "gamqst": gamqst,
-            "gamvw": gamvw,
-        }
-        self._lines = self._lines.append([linedata])
+        atom_number = 1.0
+        ionization = float(species.split()[1])
+        if len(self._lines) == 0:
+            linedata = {
+                "species": [species],
+                "wlcent": [wlcent],
+                "excit": [excit],
+                "gflog": [gflog],
+                "gamrad": [gamrad],
+                "gamqst": [gamqst],
+                "gamvw": [gamvw],
+                "atom_number": [atom_number],
+                'ionization': [ionization]
+            }
+            self._lines = pd.DataFrame.from_dict(linedata)
+        else:
+            linedata = [species, wlcent, excit, gflog, gamrad, gamqst, gamvw, atom_number, ionization]
+            self._lines.loc[len(self._lines)] = linedata
 
     def append(self, linelist: "LineList"):
         """

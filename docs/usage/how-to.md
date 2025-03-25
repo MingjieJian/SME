@@ -272,6 +272,8 @@ The detailed explanaiton of what `linelist_mode='auto'` triggers is as follow:
 Here del_wav is defined as sqrt(sme.vmic^2 + sme.vmac^2 + sme.vsini^2)/c*lambda + lambda/sme.ipres, and line_margin is set to 2AA (just for adding some margin).
 NLTE calculation is also availalbe in this mode, by setting `sme.nlte.set_nlte`.
 
+Note that the input line list will not change - only the lines being input to each segment synthesis will differ. 
+
 Removing the `linelist_mode` variable or changing it to `all` falls back to the default way to perform synthesis, described in the beginning of this section.
 
 ## How to fit parameter for a long spectra

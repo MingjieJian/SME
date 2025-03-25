@@ -653,13 +653,13 @@ class Synthesizer:
         # Merge all segments
         # if sme already has a wavelength this should be the same
         if updateStructure:
-            # if "wave" not in sme:
+            if "wave" not in sme:
                 # TODO: what if not all segments are there?
-            sme.wave = wave
-            # if "synth" not in sme:
-            sme.synth = smod
-            # if "cont" not in sme:
-            sme.cont = cmod
+                sme.wave = wave
+            if "synth" not in sme:
+                sme.synth = smod
+            if "cont" not in sme:
+                sme.cont = cmod
 
             for s in segments:
                 sme.wave[s] = wave[s]
