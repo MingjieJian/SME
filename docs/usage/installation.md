@@ -13,7 +13,7 @@ PySME can be installed through PyPI (recommended) or from github directly.
 - `source activate pysme`
 
 ## Install 
-- For the "stable" version:
+- For the "stable" version (recommended):
     - `pip install pysme-astro`
 - For the latest version use:
     - `pip install git+https://github.com/MingjieJian/SME.git`

@@ -270,20 +270,16 @@ class Grid:
         self.elem = elem
 
         if 'use_indices' in sme.linelist._lines.columns:
-            print('Creating Grid, only using lines with use_indices')
             #:LineList: Whole LineList that was passed to the C library
             self.linelist = sme.linelist[sme.linelist['use_indices']]
             #:array(str): Elemental Species Names for the linelist
             self.species = sme.linelist.species[sme.linelist['use_indices']]
-            print(len(self.linelist))
             sme.linelist._lines = sme.linelist._lines.drop(columns=['use_indices'])
         else:
-            print('Creating Grid, using all lines')
             #:LineList: Whole LineList that was passed to the C library
             self.linelist = sme.linelist
             #:array(str): Elemental Species Names for the linelist
             self.species = sme.linelist.species
-            print(len(self.linelist))
 
         #:str: Name of the grid
         self.grid_name = sme.nlte.grids[elem]
@@ -1078,7 +1074,6 @@ class NLTE(Collection):
                 continue
             else:
                 # Put corrections into the nlte_b matrix, don't cache the data
-                print('grid length:', len(grid.linerefs), len(grid.lineindices))
                 for lr, li in zip(grid.linerefs, grid.lineindices):
                     # loop through the list of relevant _lines_, substitute both their levels into the main b matrix
                     # Make sure both levels have corrections available
@@ -1099,10 +1094,8 @@ class NLTE(Collection):
 
         # The grids are cached in the NLTE object, but not saved
         if elem in self.grid_data.keys() and 'use_indices' not in sme.linelist._lines.columns:
-            print('Using the old nlte grid')
             grid = self.grid_data[elem]
         else:
-            print('Using the new nlte grid')
             grid = Grid(
                 sme,
                 elem,

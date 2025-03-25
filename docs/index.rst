@@ -23,6 +23,7 @@ PySME documentation
    Large File Server <usage/lfs>
    usage/changes
    Changelog <usage/changelog>
+   PySME how to <usage/how-to>
    usage/faq
    _sources/modules
 

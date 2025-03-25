@@ -11,6 +11,7 @@ This page stores the change log for pysme since May 2024.
 ## 0.4.189
 
 - (synthesize) synthesize function now support calculating line central-depth and line range, and can use it to select only the relevant lines in synthesize (and thus in solve). 
+    - Available in both LTE and NLTE calculation.
 - (solve) dynamic parameter function now support abundances.
 
 ## v0.4.187

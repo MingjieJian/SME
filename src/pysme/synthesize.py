@@ -760,7 +760,11 @@ class Synthesizer:
                 # Check if the current stellar parameters are within the range of that in the linelist
                 if np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= 500 or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= 1) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= 0.5): 
                     logger.warning(f'The current stellar parameters are out of the range (+-500K, +- 1 or +-0.5) of that used to calculate the central depth and ranges of the linelist. \n Current stellar parameters: Teff: {sme.teff}, logg: {sme.logg}, monh: {sme.monh}. Linelist parameters: Teff: {sme.linelist.cdepth_range_paras[0]}, logg: {sme.linelist.cdepth_range_paras[1]}, monh: {sme.linelist.cdepth_range_paras[2]}.')
-                indices = (~((sme.linelist['line_range_e'] < wbeg - line_margin-2) | (sme.linelist['line_range_s'] > wend + line_margin+2))) & (sme.linelist['central_depth'] > sme.cdr_depth_thres)
+                
+                v_broad = np.sqrt(sme.vmic**2 + sme.vmac**2 + sme.vsini**2)
+                del_wav = v_broad * sme.linelist['wlcent'] / clight
+                del_wav += sme.linelist['wlcent'] / sme.ipres
+                indices = (~((sme.linelist['line_range_e'] < wbeg - del_wav - line_margin) | (sme.linelist['line_range_s'] > wend + del_wav + line_margin))) & (sme.linelist['central_depth'] > sme.cdr_depth_thres)
                 _ = dll.InputLineList(sme.linelist[indices])
                 sme.linelist._lines['use_indices'] = indices
         if hasattr(updateLineList, "__len__") and len(updateLineList) > 0:
