@@ -601,7 +601,6 @@ class Synthesizer:
                 sme,
                 il,
                 reuse_wavelength_grid,
-                il != segments[0],
                 dll_id=dll_id,
                 passLineList=passLineList,
                 updateLineList=updateLineList,
@@ -850,7 +849,9 @@ class Synthesizer:
         central_depth = dll.CentralDepth(sme.mu, sme.accrt)
         line_range = dll.GetLineRange()
         if get_opacity:
-            opacity = dll.GetLineOpacity(sme.wran[segment])
+            opacity = []
+            for wave_single in sme.wave[segment]:
+                opacity.append(dll.GetLineOpacity(wave_single))
         else:
             opacity = None
 
