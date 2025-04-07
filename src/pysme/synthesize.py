@@ -587,7 +587,7 @@ class Synthesizer:
         # Calculate the line central depth and line range if necessary
         if linelist_mode == 'auto':
             logger.info(f'linelist mode: {linelist_mode}')
-            if sme.linelist.cdepth_range_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= 500 or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= 1) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= 0.5):
+            if sme.linelist.cdepth_range_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= sme.linelist.cdepth_range_paras_thres['teff'] or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= sme.linelist.cdepth_range_paras_thres['logg']) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= sme.linelist.cdepth_range_paras_thres['monh']):
                 logger.info(f'Updating linelist central depth and line range.')
                 sme = self.update_cdf(sme)
 
