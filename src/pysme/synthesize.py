@@ -491,9 +491,7 @@ class Synthesizer:
         radial_velocity_mode="robust",
         dll_id=None,
         linelist_mode='all',
-        line_margin=0,
-        strong_line_margin=0, 
-        strong_line_element=['H', 'Mg', 'Ca', 'Na']
+        get_opacity=False
     ):
         """
         Calculate the synthetic spectrum based on the parameters passed in the SME structure
@@ -563,7 +561,9 @@ class Synthesizer:
         wmod = [[] for _ in range(n_segments)]
         central_depth = [[] for _ in range(n_segments)]
         line_range = [[] for _ in range(n_segments)]
+        opacity = [[] for _ in range(n_segments)]
         # in_sub_list_mask  = [[] for _ in range(n_segments)]
+        sme.linelist._lines['nlte_flag'] = np.nan
 
         # If wavelengths are already defined use those as output
         if "wave" in sme:
@@ -587,7 +587,7 @@ class Synthesizer:
         # Calculate the line central depth and line range if necessary
         if linelist_mode == 'auto':
             logger.info(f'linelist mode: {linelist_mode}')
-            if sme.linelist.cdepth_range_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= 500 or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= 1) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= 0.5):
+            if sme.linelist.cdepth_range_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= sme.linelist.cdepth_range_paras_thres['teff'] or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= sme.linelist.cdepth_range_paras_thres['logg']) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= sme.linelist.cdepth_range_paras_thres['monh']):
                 logger.info(f'Updating linelist central depth and line range.')
                 sme = self.update_cdf(sme)
 
@@ -597,17 +597,17 @@ class Synthesizer:
         #   Interpolate onto geomspaced wavelength grid
         #   Apply instrumental and turbulence broadening
         for il in tqdm(segments, desc="Segments", leave=False, disable=~show_progress_bars):
-            wmod[il], smod[il], cmod[il], central_depth[il], line_range[il] = self.synthesize_segment(
+            wmod[il], smod[il], cmod[il], central_depth[il], line_range[il], opacity[il] = self.synthesize_segment(
                 sme,
                 il,
                 reuse_wavelength_grid,
-                il != segments[0],
                 dll_id=dll_id,
                 passLineList=passLineList,
                 updateLineList=updateLineList,
                 passAtmosphere=passAtmosphere,
                 passNLTE=passNLTE,
-                linelist_mode=linelist_mode
+                linelist_mode=linelist_mode,
+                get_opacity=get_opacity
             )
         for il in segments:
             if "wave" not in sme or len(sme.wave[il]) == 0:
@@ -624,6 +624,7 @@ class Synthesizer:
         sme.wmod = wmod.copy()
         sme.smod = smod.copy()
         sme.comd = cmod.copy()
+        sme.opacity = opacity.copy()
 
         # Fit continuum and radial velocity
         # And interpolate the flux onto the wavelength grid
@@ -692,7 +693,6 @@ class Synthesizer:
 
             sme.vrad = np.asarray(vrad)
             sme.vrad_unc = np.asarray(vrad_unc)
-            sme.nlte.flags = dll.GetNLTEflags()
 
             result = sme
         else:
@@ -709,14 +709,14 @@ class Synthesizer:
         sme,
         segment,
         reuse_wavelength_grid=False,
-        keep_line_opacity=False,
         dll_id=None,
         passLineList=True,
         updateLineList=False,
         passAtmosphere=True,
         passNLTE=True,
         linelist_mode='all',
-        line_margin=2
+        line_margin=2,
+        get_opacity=False
     ):
         """Create the synthetic spectrum of a single segment
 
@@ -763,7 +763,9 @@ class Synthesizer:
                 
                 v_broad = np.sqrt(sme.vmic**2 + sme.vmac**2 + sme.vsini**2)
                 del_wav = v_broad * sme.linelist['wlcent'] / clight
-                del_wav += sme.linelist['wlcent'] / sme.ipres
+                ipres_segment = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[segment]
+                if ipres_segment != 0:
+                    del_wav += sme.linelist['wlcent'] / ipres_segment
                 indices = (~((sme.linelist['line_range_e'] < wbeg - del_wav - line_margin) | (sme.linelist['line_range_s'] > wend + del_wav + line_margin))) & (sme.linelist['central_depth'] > sme.cdr_depth_thres)
                 _ = dll.InputLineList(sme.linelist[indices])
                 sme.linelist._lines['use_indices'] = indices
@@ -798,6 +800,14 @@ class Synthesizer:
             keep_lineop=False,
             wave=wint_seg,
         )
+
+        # Assign the nlte flags
+        nlte_flags = dll.GetNLTEflags()
+        sme.nlte.flags = nlte_flags
+        if linelist_mode == 'auto':
+            sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags
+        else:
+            sme.nlte.flags = nlte_flags
 
         # Store the adaptive wavelength grid for the future
         # if it was newly created
@@ -838,8 +848,14 @@ class Synthesizer:
         # Mingjie: run CentralDepth
         central_depth = dll.CentralDepth(sme.mu, sme.accrt)
         line_range = dll.GetLineRange()
+        if get_opacity:
+            opacity = []
+            for wave_single in sme.wave[segment]:
+                opacity.append(dll.GetLineOpacity(wave_single))
+        else:
+            opacity = None
 
-        return wint, sint, cint, central_depth, line_range
+        return wint, sint, cint, central_depth, line_range, opacity
     
     def update_cdf(self, sme):
         '''

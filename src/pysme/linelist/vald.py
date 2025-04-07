@@ -114,6 +114,7 @@ class ValdFile(LineList):
         self.unit = None
         self.energy_unit = None
         self.cdepth_range_paras = None
+        self.cdepth_range_paras_thres = {'teff':500, 'logg':1, 'monh':0.5}
         linelist = self.loads(filename)
 
         super().__init__(
@@ -227,6 +228,8 @@ class ValdFile(LineList):
         if valdtype == "extract_stellar":
             self.atmo = self.parse_valdatmo(atmodata)
             self.abund = self.parse_abund(abunddata)
+
+        linelist['nlte_flag'] = np.nan
 
         self.citation_info += self.parse_references(refdata, fmt)
 

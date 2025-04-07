@@ -174,7 +174,7 @@ synthesizer = Synthesizer()
 sme = synthesizer.update_cdf(sme)
 ```
 
-Now `sme.linelist` is:
+Then `sme.linelist` becomes:
 
 ```py
    species     wlcent  gflog     excit  j_lo     e_upp  j_up  lande_lower  \
@@ -261,7 +261,7 @@ sme = synthesize_spectrum(sme, linelist_mode='auto')
 
 The detailed explanaiton of what `linelist_mode='auto'` triggers is as follow:
 
-1. If the `sme.linelist.cdepth_range_paras` is None (means `update_cdf` hasn't run for it), or either the Teff, logg and monh in `sme.linelist.cdepth_range_paras` differ from the input parameters by 500K, 1 or 0.5, then run `update_cdf` under current input stellar parameters.
+1. If the `sme.linelist.cdepth_range_paras` is None (means `update_cdf` hasn't run for it), or either the Teff, logg and monh in `sme.linelist.cdepth_range_paras` differ from the input parameters by 500K, 1 or 0.5 (you can change these parameter in `sme.linelist.cdepth_range_paras_thres` as a dictionary), then run `update_cdf` under current input stellar parameters.
 2. Find the beginning and ending wavelength of each segment, wbeg and wend. 
 3. For each segment, only input the lines with:
     - `central_depth` > sme.cdr_depth_thres (default 0), and 
@@ -272,7 +272,7 @@ The detailed explanaiton of what `linelist_mode='auto'` triggers is as follow:
 Here del_wav is defined as sqrt(sme.vmic^2 + sme.vmac^2 + sme.vsini^2)/c*lambda + lambda/sme.ipres, and line_margin is set to 2AA (just for adding some margin).
 NLTE calculation is also availalbe in this mode, by setting `sme.nlte.set_nlte`.
 
-Note that the input line list will not change - only the lines being input to each segment synthesis will differ. 
+Note that the input line list will not change - only the lines being input to each segment synthesis will differ.  
 
 Removing the `linelist_mode` variable or changing it to `all` falls back to the default way to perform synthesis, described in the beginning of this section.
 
