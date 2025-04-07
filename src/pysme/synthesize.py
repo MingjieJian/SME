@@ -564,6 +564,7 @@ class Synthesizer:
         central_depth = [[] for _ in range(n_segments)]
         line_range = [[] for _ in range(n_segments)]
         # in_sub_list_mask  = [[] for _ in range(n_segments)]
+        sme.linelist._lines['nlte_flag'] = np.nan
 
         # If wavelengths are already defined use those as output
         if "wave" in sme:
@@ -692,7 +693,6 @@ class Synthesizer:
 
             sme.vrad = np.asarray(vrad)
             sme.vrad_unc = np.asarray(vrad_unc)
-            sme.nlte.flags = dll.GetNLTEflags()
 
             result = sme
         else:
@@ -763,7 +763,9 @@ class Synthesizer:
                 
                 v_broad = np.sqrt(sme.vmic**2 + sme.vmac**2 + sme.vsini**2)
                 del_wav = v_broad * sme.linelist['wlcent'] / clight
-                del_wav += sme.linelist['wlcent'] / sme.ipres
+                ipres_segment = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[segment]
+                if ipres_segment != 0:
+                    del_wav += sme.linelist['wlcent'] / ipres_segment
                 indices = (~((sme.linelist['line_range_e'] < wbeg - del_wav - line_margin) | (sme.linelist['line_range_s'] > wend + del_wav + line_margin))) & (sme.linelist['central_depth'] > sme.cdr_depth_thres)
                 _ = dll.InputLineList(sme.linelist[indices])
                 sme.linelist._lines['use_indices'] = indices
@@ -798,6 +800,14 @@ class Synthesizer:
             keep_lineop=False,
             wave=wint_seg,
         )
+
+        # Assign the nlte flags
+        nlte_flags = dll.GetNLTEflags()
+        sme.nlte.flags = nlte_flags
+        if linelist_mode == 'auto':
+            sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags
+        else:
+            sme.nlte.flags = nlte_flags
 
         # Store the adaptive wavelength grid for the future
         # if it was newly created

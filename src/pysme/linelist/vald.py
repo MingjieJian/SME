@@ -229,6 +229,8 @@ class ValdFile(LineList):
             self.atmo = self.parse_valdatmo(atmodata)
             self.abund = self.parse_abund(abunddata)
 
+        linelist['nlte_flag'] = np.nan
+
         self.citation_info += self.parse_references(refdata, fmt)
 
         return linelist
