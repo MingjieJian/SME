@@ -6,7 +6,7 @@ library.
 
 import ctypes as ct
 import logging
-import os
+import os, re
 import platform
 import subprocess
 import sys
@@ -54,7 +54,23 @@ def download_libsme(loc=None):
             " issue on Github. Supported systems are: Linux, MacOS, Windows."
         )
 
-    github_releases_url = "https://github.com/AWehrhahn/SMElib/releases/latest/download"
+    # Refine verion for Apple Silicon chips
+    if system == 'Darwin':
+        brand = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"]).decode().strip()
+
+        # Search for the number after "Apple M"
+        match = re.search(r"Apple\s*M\s*(\d+)", brand)
+        # For M1, use M2 version; for M3 use M4 verion (but not test yet)
+        if match.group(1) == '1':
+            use_version = '2'
+        elif match.group(1) == '3':
+            use_version = '4'
+        else:
+            use_version = match.group(1)
+        if match:
+            system += f'-arm-M{use_version}' 
+
+    github_releases_url = "https://github.com/MingjieJian/SMElib/releases/latest/download"
     github_releases_fname = "{system}-gfortran.zip".format(system=system)
     url = github_releases_url + "/" + github_releases_fname
     fname = join(loc, github_releases_fname)
