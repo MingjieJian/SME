@@ -754,7 +754,6 @@ class Synthesizer:
         if passLineList:
             if linelist_mode == 'all':
                 line_ion_mask = dll.InputLineList(sme.linelist)
-                # print(sme.linelist)
                 sme.line_ion_mask = line_ion_mask
             elif linelist_mode == 'auto':
                 # Check if the current stellar parameters are within the range of that in the linelist
@@ -772,6 +771,7 @@ class Synthesizer:
         if hasattr(updateLineList, "__len__") and len(updateLineList) > 0:
             # TODO Currently Updates the whole linelist, could be improved to only change affected lines
             dll.UpdateLineList(sme.atomic, sme.species, updateLineList)
+
         if passAtmosphere:
             sme = self.get_atmosphere(sme)
             dll.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)
@@ -779,9 +779,10 @@ class Synthesizer:
             dll.Ionization(0)
             dll.SetVWscale(sme.gam6)
             dll.SetH2broad(sme.h2broad)
+
         if passNLTE:
             sme.nlte.update_coefficients(sme, dll, self.lfs_nlte)        
-
+        
         dll.InputWaveRange(wbeg, wend)
         dll.Opacity()
 
@@ -805,7 +806,7 @@ class Synthesizer:
         nlte_flags = dll.GetNLTEflags()
         sme.nlte.flags = nlte_flags
         if linelist_mode == 'auto':
-            sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags
+            sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags.astype(float)
         else:
             sme.nlte.flags = nlte_flags
 
@@ -885,7 +886,6 @@ class Synthesizer:
             
             if not parallel:
                 if pysme_out:
-                    print(type(sub_sme[i]))
                     sub_sme[i] = self.synthesize_spectrum(sub_sme[i])
                 else:
                     with redirect_stdout(open(f"/dev/null", 'w')):

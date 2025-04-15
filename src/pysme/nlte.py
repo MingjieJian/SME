@@ -274,7 +274,7 @@ class Grid:
             self.linelist = sme.linelist[sme.linelist['use_indices']]
             #:array(str): Elemental Species Names for the linelist
             self.species = sme.linelist.species[sme.linelist['use_indices']]
-            sme.linelist._lines = sme.linelist._lines.drop(columns=['use_indices'])
+            # sme.linelist._lines = sme.linelist._lines.drop(columns=['use_indices'])
         else:
             #:LineList: Whole LineList that was passed to the C library
             self.linelist = sme.linelist
