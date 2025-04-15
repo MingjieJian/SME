@@ -82,8 +82,9 @@ def download_libsme(loc=None):
         pass
 
     print("Downloading file %s" % url)
-    print(f"Creating folder for lib files: {loc+'/lib'}")
-    os.makedirs(loc+'/lib', exist_ok=True)
+    loc += '/lib'
+    print(f"Creating folder for lib files: {loc}")
+    os.makedirs(loc, exist_ok=True)
     wget.download(url, out=loc)
     # the wget progress bar, does not include a new line
     print("")
