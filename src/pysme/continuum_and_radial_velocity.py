@@ -630,7 +630,8 @@ class ContinuumNormalizationMatch(ContinuumNormalizationAbstract):
             )
             popt = res.x
         except (RuntimeError, ValueError) as ex:
-            logger.warning("Failed to determine the continuum: " + ex.msg)
+            # logger.warning("Failed to determine the continuum: " + ex.msg)
+            logger.warning("Failed to determine the continuum: %s", str(ex))
             popt = p0
 
         return popt[None, :]
