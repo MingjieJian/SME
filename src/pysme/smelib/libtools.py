@@ -35,6 +35,7 @@ def download_libsme(loc=None):
     """
     if loc is None:
         loc = dirname(dirname(get_full_libfile()))
+
     # Download compiled library from github releases
     print("Downloading and installing the latest libsme version for this system")
     aliases = {
@@ -81,8 +82,8 @@ def download_libsme(loc=None):
         pass
 
     print("Downloading file %s" % url)
-    print(f"Creating folder for lib files: {loc}")
-    os.makedirs(loc, exist_ok=True)
+    print(f"Creating folder for lib files: {loc+'/lib'}")
+    os.makedirs(loc+'/lib', exist_ok=True)
     wget.download(url, out=loc)
     # the wget progress bar, does not include a new line
     print("")
