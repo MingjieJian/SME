@@ -82,7 +82,6 @@ def download_libsme(loc=None):
         pass
 
     print("Downloading file %s" % url)
-    loc += '/lib'
     print(f"Creating folder for lib files: {loc}")
     os.makedirs(loc, exist_ok=True)
     wget.download(url, out=loc)
