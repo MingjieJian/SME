@@ -91,6 +91,7 @@ def download_libsme(loc=None):
     print("Extracting file")
     zipfile.ZipFile(fname).extractall(loc)
     lib_dir = join(loc, get_lib_directory())
+    print(lib_dir)
     print(f"Current files in lib folder: {os.listdir(lib_dir) if exists(lib_dir) else 'lib directory not found'}")
 
     try:
