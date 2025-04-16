@@ -1,4 +1,4 @@
-![Python application](https://github.com/AWehrhahn/SME/workflows/Python%20application/badge.svg)
+![Python application](https://github.com/MingjieJian/SME/workflows/Python%20application/badge.svg)
 [![Documentation Status](https://readthedocs.org/projects/pysme-astro/badge/?version=latest)](https://pysme-astro.readthedocs.io/en/latest/?badge=latest)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5547527.svg)](https://doi.org/10.5281/zenodo.5547527)
 
@@ -17,7 +17,8 @@ adopting an object oriented paradigm and continuous itegration practices
 
 # Installation
 
-A stable version is available on pip `pip install pysme-astro`
+A stable version is available on pip `pip install pysme-astro`, and it is recommended to install this verion.
+
 If you are interested in the latest version you can do so by cloning this git.
 ```bash
 # Clone the git repository
@@ -27,7 +28,7 @@ cd SME
 # Install this folder (as an editable module)
 pip install -e .
 ```
-See also the [documentation](https://pysme-astro.readthedocs.io/en/latest/usage/installation.html)
+See also the [documentation](https://pysme-astro.readthedocs.io/en/latest/usage/installation.html).
 
 # Poster
 
