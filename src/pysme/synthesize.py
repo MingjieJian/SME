@@ -783,7 +783,7 @@ class Synthesizer:
         if passNLTE:
             sme.nlte.update_coefficients(sme, dll, self.lfs_nlte)        
         
-        dll.InputWaveRange(wbeg, wend)
+        dll.InputWaveRange(wbeg-2, wend+2)
         dll.Opacity()
 
         # Reuse adaptive wavelength grid in the jacobians
