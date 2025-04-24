@@ -55,6 +55,26 @@ try:
 except:
     libtools.compile_interface()
 
+# Extract the 3DNLTE H line profiles
+if not os.path.exists('~/.sme/hlineprof/lineprof.dat'):
+    """Setup the H line profile data during package installation"""
+    import gzip
+    from pathlib import Path
+    
+    # 创建目标目录
+    target_dir = os.path.expanduser("~/.sme/hlineprof")
+    Path(target_dir).mkdir(parents=True, exist_ok=True)
+    
+    # 获取包内的gz文件路径
+    gz_file = os.path.join(os.path.dirname(__file__), "lineprof.dat.gz")
+    
+    # 解压文件
+    target_file = os.path.join(target_dir, "lineprof.dat")  # 去掉.gz后缀
+    if not os.path.exists(target_file):
+        with gzip.open(gz_file, 'rb') as f_in:
+            with open(target_file, 'wb') as f_out:
+                f_out.write(f_in.read())
+
 # Provide submodules to the outside
 __all__ = [
     "util",

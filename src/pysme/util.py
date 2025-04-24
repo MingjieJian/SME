@@ -16,10 +16,13 @@ from functools import wraps
 from platform import python_version
 
 import numpy as np
+import pandas as pd
 from numpy import __version__ as npversion
 from pandas import __version__ as pdversion
 from scipy import __version__ as spversion
 from scipy.interpolate import interp1d
+from scipy.interpolate import RBFInterpolator
+from matplotlib.path import Path
 
 from . import __version__ as smeversion
 from .sme_synth import SME_DLL
@@ -430,3 +433,94 @@ def parse_args():
     )
     args = parser.parse_args()
     return args.sme, args.vald, args.fitparameters
+
+H_lineprof = pd.read_csv(os.path.expanduser("~/.sme/hlineprof/lineprof.dat"), sep=' +', names=['Teff', 'logg', 'Fe_H', 'nu', 'wl', 'wlair', 'mu', 'wmu', 'Ic', 'I'], engine='python')
+H_lineprof['wl'] *= 10
+H_lineprof['wl'] = vac2air(H_lineprof['wl'])
+
+boundary_vertices = [
+    (4000, 1.5), (4500, 1.5), (7000, 4.5), (7000, 5.0),
+    (4500, 5.0), (4500, 2.5), (4000, 2.5), (4000, 1.5)
+]
+
+def interpolate_H_spectrum(
+    df: pd.DataFrame,
+    Teff_star: float,
+    logg_star: float,
+    FeH_star: float,
+    boundary_vertices: list,
+    rbf_kernel: str = 'linear',
+    fill_value: float = np.nan,
+) -> pd.DataFrame:
+    """
+    Interpolates the hydrogen line spectrum (Ic and I) over a grid of stellar parameters
+    (Teff, logg, FeH) using radial basis function (RBF) interpolation, with 
+    boundary control in the Teff-logg space.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Hydrogen line profile data with columns:
+        ['Teff', 'logg', 'Fe_H', 'mu', 'wl', 'wmu', 'Ic', 'I'].
+    Teff_star : float
+        Effective temperature to interpolate at.
+    logg_star : float
+        Surface gravity to interpolate at.
+    FeH_star : float
+        Metallicity to interpolate at.
+    boundary_vertices : list of (Teff, logg)
+        Defines interpolation region. Outside this, returns fill_value.
+    rbf_kernel : str
+        Kernel to use for RBFInterpolator.
+    fill_value : float
+        Value to return if point is outside interpolation region.
+    output : str
+        'intensity' returns detailed (mu, wl) values,
+        'flux' returns integrated flux across mu for each wl.
+
+    Returns
+    -------
+    pd.DataFrame
+        Interpolated result as either intensity table or flux summary.
+    """
+    result = []
+    point_star_2d = (Teff_star, logg_star)
+    polygon = Path(boundary_vertices)
+    in_boundary = polygon.contains_point(point_star_2d)
+    unique_wl = df['wl'].unique()
+
+    for wl in unique_wl:
+        sub_df_wl = df[df['wl'] == wl]
+        sub_results = []
+
+        for mu in sub_df_wl['mu'].unique():
+            sub_df = sub_df_wl[sub_df_wl['mu'] == mu]
+            if sub_df.shape[0] < 4:
+                continue
+
+            wmu = sub_df['wmu'].iloc[0]
+
+            if not in_boundary:
+                sub_results.append([mu, wmu, fill_value, fill_value])
+                continue
+
+            points = sub_df[['Teff', 'logg', 'Fe_H']].values
+            Ic_vals = sub_df['Ic'].values
+            I_vals = sub_df['I'].values
+
+            try:
+                rbf_Ic = RBFInterpolator(points, Ic_vals, kernel=rbf_kernel)
+                rbf_I = RBFInterpolator(points, I_vals, kernel=rbf_kernel)
+
+                Ic_interp = rbf_Ic([[Teff_star, logg_star, FeH_star]])[0]
+                I_interp = rbf_I([[Teff_star, logg_star, FeH_star]])[0]
+
+                sub_results.append([mu, wmu, Ic_interp, I_interp])
+            except Exception as e:
+                print(f"Interpolation failed at mu={mu}, wl={wl}, skipped. Reason: {e}")
+                continue
+
+        for mu, wmu, Ic_interp, I_interp in sub_results:
+            result.append([mu, wl, wmu, Ic_interp, I_interp])
+
+    return pd.DataFrame(result, columns=['mu', 'wl', 'wmu', 'Ic_interp', 'I_interp'])

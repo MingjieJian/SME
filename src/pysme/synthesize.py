@@ -22,7 +22,7 @@ from .iliffe_vector import Iliffe_vector
 from .large_file_storage import setup_lfs
 from .sme import MASK_VALUES
 from .sme_synth import SME_DLL
-from .util import show_progress_bars
+from .util import show_progress_bars, interpolate_H_spectrum, H_lineprof, boundary_vertices, safe_interpolation
 from .sme import SME_Structure
 
 from contextlib import redirect_stdout
@@ -148,6 +148,7 @@ class Synthesizer:
         # vstep2 = np.median(diff / wint[:-1] * clight) # Median step
         vstep3 = 0.05  # 0.05 km/s step
         vstep = np.max([vstep1, vstep3])  # select the largest
+        # vstep = 0.02
 
         # Generate model wavelength scale X, with uniform wavelength step.
         nx = int(
@@ -198,7 +199,7 @@ class Synthesizer:
         return smod, cmod
 
     @staticmethod
-    def integrate_flux(mu, inten, deltav, vsini, vrt, osamp=None):
+    def integrate_flux(mu, inten, deltav, vsini, vrt, osamp=None, wt=None, tdnlteH=False):
         """
         Produces a flux profile by integrating intensity profiles (sampled
         at various mu angles) over the visible stellar surface.
@@ -335,14 +336,15 @@ class Synthesizer:
         # boundaries are selected such that r(i+1) exactly bisects the area between
         # rmu(i) and rmu(i+1). The in!=rmost boundary, r(0) is set to 0 (disk center)
         # and the outermost boundary, r(nmu) is set to 1 (limb).
-        if nmu > 1:  # really want disk integration
-            # Calculate integration weights for each disk integration annulus.  The weight
-            # is just given by the relative area of each annulus, normalized such that
-            # the sum of all weights is unity.  Weights for limb darkening are included
-            # explicitly in the intensity profiles, so they aren't needed here.
-            wt = r[1:] ** 2 - r[:-1] ** 2  # weights = relative areas
-        else:
-            wt = np.array([1.0])  # single mu value, full weight
+        if wt is None:
+            if nmu > 1:  # really want disk integration
+                # Calculate integration weights for each disk integration annulus.  The weight
+                # is just given by the relative area of each annulus, normalized such that
+                # the sum of all weights is unity.  Weights for limb darkening are included
+                # explicitly in the intensity profiles, so they aren't needed here.
+                wt = r[1:] ** 2 - r[:-1] ** 2  # weights = relative areas
+            else:
+                wt = np.array([1.0])  # single mu value, full weight
 
         # Generate index vectors for input and oversampled points. Note that the
         # oversampled indicies are carefully chosen such that every "os" finely
@@ -451,10 +453,16 @@ class Synthesizer:
             yfine = convolve(yfine, mkern, mode="nearest")
 
             # Add contribution from current annulus to the running total.
-            flux = flux + wt[imu] * yfine  # add profile to running total
+            if tdnlteH:
+                flux = flux + wt[imu] * yfine * mu[imu] # add profile to running total
+            else:
+                flux = flux + wt[imu] * yfine  # add profile to running total
 
         flux = np.reshape(flux, (npts, os))  # convert to an array
-        flux = np.pi * np.sum(flux, axis=1) / os  # sum, normalize
+        if tdnlteH:
+            flux = np.pi * np.sum(flux, axis=1) / os  # sum, normalize
+        else:
+            flux = np.pi * np.sum(flux, axis=1) / os  # sum, normalize
         return flux
 
     def get_dll_id(self, dll=None):
@@ -491,7 +499,7 @@ class Synthesizer:
         radial_velocity_mode="robust",
         dll_id=None,
         linelist_mode='all',
-        get_opacity=False
+        get_opacity=False,
     ):
         """
         Calculate the synthetic spectrum based on the parameters passed in the SME structure
@@ -521,6 +529,10 @@ class Synthesizer:
         sme : SME_Struct
             same sme structure with synthetic spectrum in sme.smod
         """
+
+        # Prepare 3D NLTE H profile corrections
+        if sme.tdnlte_H:
+            sme.tdnlte_H_correction = self.get_H_3dnlte_correction(sme)
 
         if sme is not self.known_sme:
             logger.debug("Synthesize spectrum")
@@ -596,7 +608,7 @@ class Synthesizer:
         #   Calculate spectral synthesis for each
         #   Interpolate onto geomspaced wavelength grid
         #   Apply instrumental and turbulence broadening
-        for il in tqdm(segments, desc="Segments", leave=False, disable=~show_progress_bars):
+        for il in tqdm(segments, desc="Segments", leave=False, disable=show_progress_bars):
             wmod[il], smod[il], cmod[il], central_depth[il], line_range[il], opacity[il] = self.synthesize_segment(
                 sme,
                 il,
@@ -842,6 +854,11 @@ class Synthesizer:
                 ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[segment]
                 sint = broadening.apply_broadening(ipres, wint, sint, type=sme.iptype, sme=sme)
 
+            # Apply the correction on Ha, Hb and Hgamma line here.
+            if sme.tdnlte_H:
+                correction_resample = safe_interpolation(sme.tdnlte_H_correction[0], sme.tdnlte_H_correction[1], wint, fill_value=1)
+                sint *= correction_resample
+
         # Divide calculated spectrum by continuum
         if sme.normalize_by_continuum:
             sint /= cint
@@ -927,6 +944,105 @@ class Synthesizer:
         sme.linelist.cdepth_range_paras = [sme.teff, sme.logg, sme.monh, sme.vmic]
 
         return sme
+
+    def get_H_3dnlte_correction(self, sme):
+        """
+        Compute the 3D NLTE correction factor for hydrogen lines.
+
+        This function:
+        - Extracts only H I lines from the linelist in `sme`
+        - Synthesizes an H-only spectrum using LTE
+        - Interpolates the precomputed 3D NLTE correction profiles to match 
+        the current SME model parameters and mu-angle grid
+        - Computes a correction factor as the ratio of 3D NLTE to LTE intensities
+        - Applies this correction to the full synthetic spectrum (`sme_res`)
+        - Returns the corrected spectrum and the full correction matrix
+
+        Parameters
+        ----------
+        sme : SME_Structure
+            The SME input object containing model parameters (Teff, logg, FeH, mu, linelist, etc.)
+
+        Returns
+        -------
+
+        correction_all : list
+            A list containing:
+            [0] - Wavelength array used for correction
+            [1] - 2D correction factor array: shape (n_mu, n_wavelength)
+            [2] - 2D I/Ic intensity profile (3D NLTE): shape (n_mu, n_wavelength)
+
+        Notes
+        -----
+        - Uses global `H_lineprof` as the precomputed hydrogen profile database.
+        - `safe_interpolation` must support extrapolation with `fill_value=1.0` to avoid numerical issues.
+        - The correction is only applied within the defined `boundary_vertices`; outside that region, correction = 1.
+
+        """
+        # Generate the synthetic spectra using only the H lines
+        sme_H_only = SME_Structure()
+        sme_H_only.teff, sme_H_only.logg, sme_H_only.monh, sme_H_only.vmic, sme_H_only.vmac, sme_H_only.vsini = sme.teff, sme.logg, sme.monh, sme.vmic, sme.vmac, sme.vsini
+        sme_H_only.iptype = sme.iptype
+        sme_H_only.ipres = sme.ipres
+        # sme_H_only.specific_intensities_only = True
+        # sme_H_only.normalize_by_continuum = False
+        sme_H_only.linelist = sme.linelist[sme.linelist['species'] == 'H 1']
+        sme_H_only.wave = np.arange(4000, 6700, 0.02)
+        sme_H_only.tdnlte_H = False
+        sme_H_only_res = self.synthesize_spectrum(sme_H_only)
+
+        # Get the correction
+        resample_H_all = interpolate_H_spectrum(H_lineprof, sme.teff, sme.logg, sme.monh, boundary_vertices)
+
+        # Integrate the intensity
+        mu_array = resample_H_all.loc[resample_H_all['wl'] == resample_H_all.loc[0, 'wl'], 'mu'].values
+        wmu_array = resample_H_all.loc[resample_H_all['wl'] == resample_H_all.loc[0, 'wl'], 'wmu'].values
+        nmu = len(mu_array)
+
+        sint = []
+        cint = []
+        for mu in mu_array:
+            indices = resample_H_all['mu'] == mu
+            wint = resample_H_all.loc[indices, 'wl'].values
+            sint.append(resample_H_all.loc[indices, 'I_interp'].values)
+            cint.append(resample_H_all.loc[indices, 'Ic_interp'].values)
+        sint = np.array(sint)
+        cint = np.array(cint)
+
+        wgrid_all = []
+        sint_all = []
+        cint_all = []
+
+        for indices in [wint < 4500, (wint > 4500) & (wint < 6000), wint > 6000]:
+            wint_single = wint[indices]
+            sint_single = sint[:, indices]
+            cint_single = cint[:, indices]
+            
+            wgrid, vstep = self.new_wavelength_grid(wint_single)
+            cint_single = self.integrate_flux(mu_array, cint_single, 1, 0, 0, wt=wmu_array, tdnlteH=True)
+            cint_single = np.interp(wgrid, wint_single, cint_single)
+            
+            y_integrated = np.empty((nmu, len(wgrid)))
+            for imu in range(nmu):
+                y_integrated[imu] = np.interp(wgrid, wint_single, sint_single[imu])
+            sint_single = self.integrate_flux(mu_array, y_integrated, vstep, sme.vsini, sme.vmac, wt=wmu_array, tdnlteH=True)
+
+            if "iptype" in sme:
+                logger.debug("Apply detector broadening")
+                ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[segment]
+                sint_single = broadening.apply_broadening(ipres, wint_single, sint_single, type=sme.iptype, sme=sme)
+
+            wgrid_all.append(wgrid)
+            sint_all.append(sint_single)
+            cint_all.append(cint_single)
+
+        wgrid_all = np.concatenate(wgrid_all)
+        sint_all = np.concatenate(sint_all)
+        cint_all = np.concatenate(cint_all)
+
+        correction_all = safe_interpolation(wgrid_all, sint_all/cint_all, sme_H_only_res.wave[0], fill_value=1)
+        correction_all = correction_all / sme_H_only_res.synth[0]
+        return [sme_H_only_res.wave[0], correction_all, sint_all, cint_all]
 
 def synthesize_spectrum(sme, segments="all",**args):
     synthesizer = Synthesizer()
