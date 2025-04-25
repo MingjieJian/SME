@@ -8,6 +8,7 @@ import uuid
 import numpy as np
 from scipy.constants import speed_of_light
 from scipy.interpolate import interp1d
+from scipy.interpolate import CubicSpline
 from scipy.ndimage import convolve
 from tqdm import tqdm
 
@@ -29,6 +30,9 @@ from contextlib import redirect_stdout
 from copy import deepcopy
 from pqdm.processes import pqdm
 from tqdm import tqdm
+
+from memory_profiler import profile
+import gc
 
 import pickle
 
@@ -372,9 +376,10 @@ class Synthesizer:
             else:
                 # spline onto fine wavelength scale
                 try:
-                    yfine = interp1d(
-                        xpix, ypix, kind="cubic", fill_value="extrapolate"
-                    )(xfine)
+                    cs = CubicSpline(
+                        xpix, ypix, extrapolate=True
+                    )
+                    yfine = cs(xfine)
                 except ValueError:
                     yfine = interp1d(
                         xpix, ypix, kind="linear", fill_value="extrapolate"
@@ -463,6 +468,7 @@ class Synthesizer:
             flux = np.pi * np.sum(flux, axis=1) / os  # sum, normalize
         else:
             flux = np.pi * np.sum(flux, axis=1) / os  # sum, normalize
+
         return flux
 
     def get_dll_id(self, dll=None):
@@ -485,7 +491,8 @@ class Synthesizer:
             return __DLL_DICT__[dll_id]
         else:
             return dll_id
-
+    
+    @profile
     def synthesize_spectrum(
         self,
         sme,
@@ -608,7 +615,8 @@ class Synthesizer:
         #   Calculate spectral synthesis for each
         #   Interpolate onto geomspaced wavelength grid
         #   Apply instrumental and turbulence broadening
-        for il in tqdm(segments, desc="Segments", leave=False, disable=show_progress_bars):
+        sme.first_segment = True
+        for il in tqdm(segments, desc="Segments", leave=True, disable=show_progress_bars):
             wmod[il], smod[il], cmod[il], central_depth[il], line_range[il], opacity[il] = self.synthesize_segment(
                 sme,
                 il,
@@ -716,6 +724,7 @@ class Synthesizer:
         # Cleanup
         return result
 
+    @profile
     def synthesize_segment(
         self,
         sme,
@@ -793,7 +802,7 @@ class Synthesizer:
             dll.SetH2broad(sme.h2broad)
 
         if passNLTE:
-            sme.nlte.update_coefficients(sme, dll, self.lfs_nlte)        
+            sme.nlte.update_coefficients(sme, dll, self.lfs_nlte, sme.first_segment)        
         
         dll.InputWaveRange(wbeg-2, wend+2)
         dll.Opacity()
@@ -872,7 +881,7 @@ class Synthesizer:
                 opacity.append(dll.GetLineOpacity(wave_single))
         else:
             opacity = None
-
+        sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
     def update_cdf(self, sme):
@@ -986,6 +995,9 @@ class Synthesizer:
         sme_H_only.ipres = sme.ipres
         # sme_H_only.specific_intensities_only = True
         # sme_H_only.normalize_by_continuum = False
+        for i in range(len(sme.nlte.elements)):
+            sme_H_only.nlte.set_nlte(sme.nlte.elements[i], sme.nlte.grids[sme.nlte.elements[i]])
+        # sme_H_only = deepcopy(sme)
         sme_H_only.linelist = sme.linelist[sme.linelist['species'] == 'H 1']
         sme_H_only.wave = np.arange(4000, 6700, 0.02)
         sme_H_only.tdnlte_H = False
@@ -1042,7 +1054,9 @@ class Synthesizer:
 
         correction_all = safe_interpolation(wgrid_all, sint_all/cint_all, sme_H_only_res.wave[0], fill_value=1)
         correction_all = correction_all / sme_H_only_res.synth[0]
-        return [sme_H_only_res.wave[0], correction_all, sint_all, cint_all]
+        sint_all = safe_interpolation(wgrid_all, sint_all, sme_H_only_res.wave[0], fill_value=1)
+        cint_all = safe_interpolation(wgrid_all, cint_all, sme_H_only_res.wave[0], fill_value=1)
+        return [sme_H_only_res.wave[0], correction_all, sint_all, cint_all, sme_H_only_res.synth[0]]
 
 def synthesize_spectrum(sme, segments="all",**args):
     synthesizer = Synthesizer()
