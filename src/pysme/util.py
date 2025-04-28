@@ -451,7 +451,7 @@ def interpolate_H_spectrum(
     boundary_vertices: list,
     rbf_kernel: str = 'linear',
     fill_value: float = np.nan,
-) -> pd.DataFrame:
+):
     """
     Interpolates the hydrogen line spectrum (Ic and I) over a grid of stellar parameters
     (Teff, logg, FeH) using radial basis function (RBF) interpolation, with 
@@ -523,4 +523,4 @@ def interpolate_H_spectrum(
         for mu, wmu, Ic_interp, I_interp in sub_results:
             result.append([mu, wl, wmu, Ic_interp, I_interp])
 
-    return pd.DataFrame(result, columns=['mu', 'wl', 'wmu', 'Ic_interp', 'I_interp'])
+    return pd.DataFrame(result, columns=['mu', 'wl', 'wmu', 'Ic_interp', 'I_interp']), in_boundary

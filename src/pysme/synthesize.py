@@ -29,10 +29,6 @@ from .sme import SME_Structure
 from contextlib import redirect_stdout
 from copy import deepcopy
 from pqdm.processes import pqdm
-from tqdm import tqdm
-
-from memory_profiler import profile
-import gc
 
 import pickle
 
@@ -492,7 +488,6 @@ class Synthesizer:
         else:
             return dll_id
     
-    @profile
     def synthesize_spectrum(
         self,
         sme,
@@ -536,7 +531,8 @@ class Synthesizer:
         sme : SME_Struct
             same sme structure with synthetic spectrum in sme.smod
         """
-
+        logger.info(f"Current teff: {sme.teff}")
+        logger.info(f"Current tdnlte_H: {sme.tdnlte_H}")
         # Prepare 3D NLTE H profile corrections
         if sme.tdnlte_H:
             sme.tdnlte_H_correction = self.get_H_3dnlte_correction(sme)
@@ -616,7 +612,7 @@ class Synthesizer:
         #   Interpolate onto geomspaced wavelength grid
         #   Apply instrumental and turbulence broadening
         sme.first_segment = True
-        for il in tqdm(segments, desc="Segments", leave=True, disable=show_progress_bars):
+        for il in tqdm(segments, desc="Segments", leave=True, disable=~show_progress_bars):
             wmod[il], smod[il], cmod[il], central_depth[il], line_range[il], opacity[il] = self.synthesize_segment(
                 sme,
                 il,
@@ -724,7 +720,6 @@ class Synthesizer:
         # Cleanup
         return result
 
-    @profile
     def synthesize_segment(
         self,
         sme,
@@ -794,7 +789,6 @@ class Synthesizer:
             dll.UpdateLineList(sme.atomic, sme.species, updateLineList)
 
         if passAtmosphere:
-            sme = self.get_atmosphere(sme)
             dll.InputModel(sme.teff, sme.logg, sme.vmic, sme.atmo)
             dll.InputAbund(sme.abund)
             dll.Ionization(0)
@@ -989,6 +983,7 @@ class Synthesizer:
 
         """
         # Generate the synthetic spectra using only the H lines
+        logger.info(f"Getting H 3dnlte correction")
         sme_H_only = SME_Structure()
         sme_H_only.teff, sme_H_only.logg, sme_H_only.monh, sme_H_only.vmic, sme_H_only.vmac, sme_H_only.vsini = sme.teff, sme.logg, sme.monh, sme.vmic, sme.vmac, sme.vsini
         sme_H_only.iptype = sme.iptype
@@ -998,13 +993,18 @@ class Synthesizer:
         for i in range(len(sme.nlte.elements)):
             sme_H_only.nlte.set_nlte(sme.nlte.elements[i], sme.nlte.grids[sme.nlte.elements[i]])
         # sme_H_only = deepcopy(sme)
-        sme_H_only.linelist = sme.linelist[sme.linelist['species'] == 'H 1']
+        sme_H_only.linelist = sme.linelist[(sme.linelist['species'] == 'H 1') | ((sme.linelist['wlcent'] > 6562.8-0.5) & (sme.linelist['wlcent'] < 6562.8+0.5))]
         sme_H_only.wave = np.arange(4000, 6700, 0.02)
         sme_H_only.tdnlte_H = False
         sme_H_only_res = self.synthesize_spectrum(sme_H_only)
 
         # Get the correction
-        resample_H_all = interpolate_H_spectrum(H_lineprof, sme.teff, sme.logg, sme.monh, boundary_vertices)
+        resample_H_all, in_boundary = interpolate_H_spectrum(H_lineprof, sme.teff, sme.logg, sme.monh, boundary_vertices)
+
+        if not in_boundary:
+            logger.info(f"Outside H 3dnlte grid, not performing correction.")
+            sme.tdnlte_H = False
+            return None
 
         # Integrate the intensity
         mu_array = resample_H_all.loc[resample_H_all['wl'] == resample_H_all.loc[0, 'wl'], 'mu'].values
@@ -1052,10 +1052,14 @@ class Synthesizer:
         sint_all = np.concatenate(sint_all)
         cint_all = np.concatenate(cint_all)
 
-        correction_all = safe_interpolation(wgrid_all, sint_all/cint_all, sme_H_only_res.wave[0], fill_value=1)
+        interpolator = interp1d(wgrid_all, sint_all/cint_all, kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
+        correction_all = interpolator(sme_H_only_res.wave[0])
+        # if np.all(sint_all) == 1:
         correction_all = correction_all / sme_H_only_res.synth[0]
-        sint_all = safe_interpolation(wgrid_all, sint_all, sme_H_only_res.wave[0], fill_value=1)
-        cint_all = safe_interpolation(wgrid_all, cint_all, sme_H_only_res.wave[0], fill_value=1)
+        interpolator = interp1d(wgrid_all, sint_all, kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
+        sint_all = interpolator(sme_H_only_res.wave[0])
+        interpolator = interp1d(wgrid_all, cint_all, kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
+        cint_all = interpolator(sme_H_only_res.wave[0])
         return [sme_H_only_res.wave[0], correction_all, sint_all, cint_all, sme_H_only_res.synth[0]]
 
 def synthesize_spectrum(sme, segments="all",**args):
