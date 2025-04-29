@@ -381,7 +381,8 @@ class Abund(IPersist):
         if type == "h=12":
             pass
         elif type == "sme":
-            abund[1:] += 12 - np.log10(abund[0])
+            abund[1] = np.log10(abund[1]/abund[0]) + 12
+            abund[2:] += 12 - np.log10(abund[0])
             abund[0] = 12
         elif type == "n/ntot":
             abund /= abund[0]
