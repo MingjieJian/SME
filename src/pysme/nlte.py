@@ -17,8 +17,6 @@ from .abund import elements as abund_elem
 from .data_structure import Collection, CollectionFactory, array, astype, oneof, this
 from .util import show_progress_bars
 
-from memory_profiler import profile
-
 import pickle
 
 logger = logging.getLogger(__name__)
