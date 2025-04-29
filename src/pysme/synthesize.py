@@ -1039,7 +1039,8 @@ class Synthesizer:
 
             if "iptype" in sme:
                 logger.debug("Apply detector broadening")
-                ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[segment]
+                # ToDo: fit for different resolution in segments (but not necessary?)
+                ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[0]
                 sint_single = broadening.apply_broadening(ipres, wint_single, sint_single, type=sme.iptype, sme=sme)
 
             wgrid_all.append(wgrid)
