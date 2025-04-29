@@ -427,7 +427,8 @@ class Abund(IPersist):
         elif type == "sme":
             abund2 = 10 ** (abund - 12)
             abund[0] = 1 / np.nansum(abund2)
-            abund[1:] = abund[1:] - 12 + np.log10(abund[0])
+            abund[1] = 10**(abund[1] - 12) * abund[0]
+            abund[2:] = abund[2:] - 12 + np.log10(abund[0])
             # abund /= np.sum(abund)
             # abund[1:] = np.log10(abund[1:])
         elif type == "n/ntot":
