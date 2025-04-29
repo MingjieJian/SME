@@ -17,7 +17,9 @@ jobs:
         include:
           - name: ubuntu
             runs_on: ubuntu-latest
-          - name: macos
+          - name: macos-intel
+            runs_on: macos-13
+          - name: macos-apple-silicon
             runs_on: macos-15
           # - name: windows
           #   runs_on: windows-latest
@@ -31,6 +33,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Install gfortran (libgfortran) on macOS
+        if: matrix.runs_on == 'macos-13'
+        run: |
+          brew update
+          brew install gcc@9
+          brew link --force gcc@9
 
       - name: Set up Python 3.8
         uses: actions/setup-python@v3

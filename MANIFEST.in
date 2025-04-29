@@ -1,6 +1,7 @@
 include src/pysme/lib/*
 include src/pysme/bin/*
 include src/pysme/share/libsme/*
+recursive-include src/pysme *.dat.gz
 
 include src/pysme/datafiles_atmospheres.json
 include src/pysme/datafiles_nlte.json

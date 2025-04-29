@@ -428,20 +428,20 @@ class Grid:
         rabund = sel - sfe
         return rabund
 
-    def get(self, abund, teff, logg, monh, atmo):
+    def get(self, abund, teff, logg, monh, atmo, first_segment=True):
         rabund = self.scaled_rel_abund(abund)
 
-        if len(self.limits) == 0 or not (
+        if (len(self.limits) == 0 or not (
             (self.limits["xfe"][0] <= rabund <= self.limits["xfe"][-1])
             and (self.limits["teff"][0] <= teff <= self.limits["teff"][-1])
             and (self.limits["grav"][0] <= logg <= self.limits["grav"][-1])
             and (self.limits["feh"][0] <= monh <= self.limits["feh"][-1])
-        ):
-            _ = self.read_grid(rabund, teff, logg, monh)
+        )):
+            _ = self.read_grid(rabund, teff, logg, monh, first_segment)
 
         return self.interpolate(rabund, teff, logg, monh, atmo)
 
-    def read_grid(self, rabund, teff, logg, monh):
+    def read_grid(self, rabund, teff, logg, monh, first_segment):
         """Read the NLTE coefficients from the nlte_grid files for the given element
         The class will cache subgrid_size points around the target values as well
 
@@ -494,7 +494,8 @@ class Grid:
         ):
             model = self._keys[f[l], g[k], t[j], x[i]]
             try:
-                self.bgrid[:, :, i, j, k, l] = self.directory[model]
+                if first_segment:
+                    self.bgrid[:, :, i, j, k, l] = self.directory[model]
             except KeyError:
                 warnings.warn(
                     f"Missing Model for element {self.elem}: T={self._teff[t[j]]}, logg={self._grav[g[k]]}, feh={self._feh[f[l]]}, abund={self._xfe[x[i]]:.2f}"
@@ -1021,7 +1022,8 @@ class NLTE(Collection):
     def _citation_info(self, value):
         pass
 
-    def update_coefficients(self, sme, dll, lfs_nlte):
+    
+    def update_coefficients(self, sme, dll, lfs_nlte, first_segment):
         """pass departure coefficients to C library"""
 
         # Reset the departure coefficient every time, just to be sure
@@ -1064,7 +1066,7 @@ class NLTE(Collection):
                 )
                 marked_for_removal += [elem]
                 continue
-            bmat = grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo)
+            bmat = grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo, first_segment)
             if bmat is None or grid.linerefs.size == 0:
                 logger.warning(
                     "No %s NLTE lines found, removing it from NLTE calculations",
