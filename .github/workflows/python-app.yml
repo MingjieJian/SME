@@ -35,7 +35,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install gfortran (libgfortran) on macOS
-        if: runner.os == 'macOS'
+        if: matrix.runs_on == 'macos-13'
         run: |
           brew update
           brew install gcc@9
