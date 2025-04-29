@@ -897,7 +897,7 @@ class Synthesizer:
         sub_sme_init = SME_Structure()
         exclude_keys = ['wave', 'synth', 'spec', 'uncs']
         for key, value in sme.__dict__.items():
-            if key not in exclude_keys:
+            if key not in exclude_keys or 'cscale' in key:
                 setattr(sub_sme_init, key, deepcopy(value))
         sub_sme_init.wave = np.arange(5000, 5010, 1)
         sub_sme_init.linelist = None
