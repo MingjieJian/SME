@@ -58,6 +58,7 @@ def download_libsme(loc=None):
     # Refine verion for Apple Silicon chips
     if system == 'macos':
         brand = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"]).decode().strip()
+        print(brand)
 
         # Search for the number after "Apple M"
         match = re.search(r"Apple\s*M\s*(\d+)", brand)
