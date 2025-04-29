@@ -428,7 +428,7 @@ class Grid:
         rabund = sel - sfe
         return rabund
 
-    def get(self, abund, teff, logg, monh, atmo, first_segment):
+    def get(self, abund, teff, logg, monh, atmo, first_segment=True):
         rabund = self.scaled_rel_abund(abund)
 
         if (len(self.limits) == 0 or not (
