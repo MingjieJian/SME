@@ -895,9 +895,13 @@ class Synthesizer:
         
         sub_sme = []
         sub_sme_init = SME_Structure()
-        sub_sme_init.teff, sub_sme_init.logg, sub_sme_init.monh, sub_sme_init.vmic, sub_sme_init.vmac, sub_sme_init.vsini = sme.teff, sme.logg, sme.monh, sme.vmic, sme.vmac, sme.vsini
+        exclude_keys = ['wave', 'synth', 'spec', 'uncs']
+        for key, value in sme.__dict__.items():
+            if key not in exclude_keys:
+                setattr(sub_sme_init, key, deepcopy(value))
         sub_sme_init.wave = np.arange(5000, 5010, 1)
         sub_sme_init.linelist = None
+
         for i in range(N_chunk):
             sub_sme.append(deepcopy(sub_sme_init))
             sub_sme[i].linelist = sub_linelist[i]
