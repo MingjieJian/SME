@@ -62,14 +62,14 @@ def download_libsme(loc=None):
 
         # Search for the number after "Apple M"
         match = re.search(r"Apple\s*M\s*(\d+)", brand)
-        # For M1, use M2 version; for M3 use M4 verion (but not test yet)
-        if match.group(1) == '1':
-            use_version = '2'
-        elif match.group(1) == '3':
-            use_version = '4'
-        else:
-            use_version = match.group(1)
         if match:
+            # For M1, use M2 version; for M3 use M4 verion (but not test yet)
+            if match.group(1) == '1':
+                use_version = '2'
+            elif match.group(1) == '3':
+                use_version = '4'
+            else:
+                use_version = match.group(1)
             system += f'-arm-M{use_version}' 
 
     github_releases_url = "https://github.com/MingjieJian/SMElib/releases/latest/download"
