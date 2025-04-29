@@ -531,7 +531,6 @@ class Synthesizer:
         sme : SME_Struct
             same sme structure with synthetic spectrum in sme.smod
         """
-        logging.info(f"current params: {sme.teff, sme.logg, sme.monh, sme.vmic}")
         # Prepare 3D NLTE H profile corrections
         if sme.tdnlte_H:
             sme.tdnlte_H_correction = self.get_H_3dnlte_correction(sme)
