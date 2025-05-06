@@ -895,7 +895,7 @@ class Synthesizer:
         
         sub_sme = []
         sub_sme_init = SME_Structure()
-        exclude_keys = ['wave', 'synth', 'spec', 'uncs']
+        exclude_keys = ['_wave', '_synth', '_spec', '_uncs', '_mask', '_SME_Structure__wran', '_normalize_by_continuum', '_specific_intensities_only', '_telluric', '__cont', '_linelist', '_fitparameters', '_fitresults']
         for key, value in sme.__dict__.items():
             if key not in exclude_keys and 'cscale' not in key and 'vrad' not in key:
                 setattr(sub_sme_init, key, deepcopy(value))
@@ -935,7 +935,7 @@ class Synthesizer:
                 sme.linelist._lines = sme.linelist._lines.drop(column, axis=1)
         for column in ['central_depth', 'line_range_s', 'line_range_e']:
             sme.linelist._lines[column] = stack_linelist._lines[column]
-        pickle.dump([sme.linelist._lines, stack_linelist._lines], open('linelist.pkl', 'wb'))
+        # pickle.dump([sme.linelist._lines, stack_linelist._lines], open('linelist.pkl', 'wb'))
 
         # Manually change the depth of all H 1 lines to 1, to include them back.
         sme.linelist._lines.loc[sme.linelist['species'] == 'H 1', 'central_depth'] = 1 
