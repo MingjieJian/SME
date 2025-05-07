@@ -17,7 +17,7 @@ from .abund import elements as abund_elem
 from .data_structure import Collection, CollectionFactory, array, astype, oneof, this
 from .util import show_progress_bars
 
-import pickle
+from memory_profiler import profile
 
 logger = logging.getLogger(__name__)
 
@@ -403,6 +403,77 @@ class Grid:
                 conf, term, species, rotnum, energies
             )
 
+    def renew_linelist(
+        self,
+        sme,
+    ):
+
+        if 'use_indices' in sme.linelist._lines.columns:
+            #:LineList: Whole LineList that was passed to the C library
+            self.linelist = sme.linelist[sme.linelist['use_indices']]
+            #:array(str): Elemental Species Names for the linelist
+            self.species = sme.linelist.species[sme.linelist['use_indices']]
+            # sme.linelist._lines = sme.linelist._lines.drop(columns=['use_indices'])
+        else:
+            #:LineList: Whole LineList that was passed to the C library
+            self.linelist = sme.linelist
+            #:array(str): Elemental Species Names for the linelist
+            self.species = sme.linelist.species
+
+        #:dict: upper and lower parameters covered by the grid
+        self.limits = {}
+        #:array: NLTE data array
+        self.bgrid = None
+        #:array: Depth points of the NLTE data
+        self.depth = None
+
+        #:array: Indices of the lines in the NLTE data
+        self.linerefs = None
+        #:array: Indices of the lines in the LineList
+        self.lineindices = None
+        #:array: Indices of the lines in the bgrid
+        self.iused = None
+
+        #:str: citations in bibtex format, if known
+        self.citation_info = ""
+
+        self.first_warning = True
+
+        conf = self.directory["conf"].astype("U")
+        term = self.directory["term"].astype("U")
+        try:
+            species = self.directory["spec"].astype("U")
+        except KeyError:
+            logger.warning(
+                "Could not find 'species' field in NLTE file %s. Assuming they are all '%s 1'.",
+                self.grid_name,
+                self.elem,
+            )
+            species = np.full(conf.shape, "%s 1" % self.elem)
+            pass
+        rotnum = self.directory["J"]  # rotational number of the atomic state
+        if self.version[0] == 1 and self.version[1] >= 10:
+            energies = self.directory["energy"]  # energy in eV
+            self.citation_info = self.directory["citation"][()].decode()
+        else:
+            self.citation_info = None
+            if self.selection != "levels":
+                # logger.warning(
+                #     "NLTE grid file version %s only supports level selection, not %s",
+                #     self.version,
+                #     self.selection,
+                # )
+                self.selection = "levels"
+
+        if self.selection == "levels":
+            self.lineindices, self.linerefs, self.iused = self.select_levels(
+                conf, term, species, rotnum
+            )
+        elif self.selection == "energy":
+            self.lineindices, self.linerefs, self.iused = self.select_energies(
+                conf, term, species, rotnum, energies
+            )
+
     def solar_rel_abund(self, abund, elem):
         """Get the abundance of elem relative to H, i.e. [X/H]"""
         if self.abund_format == "H=12":
@@ -441,6 +512,7 @@ class Grid:
 
         return self.interpolate(rabund, teff, logg, monh, atmo)
 
+    # @profile
     def read_grid(self, rabund, teff, logg, monh, first_segment):
         """Read the NLTE coefficients from the nlte_grid files for the given element
         The class will cache subgrid_size points around the target values as well
@@ -484,7 +556,8 @@ class Grid:
         ngrav = len(g)
         nfeh = len(f)
 
-        self.bgrid = np.zeros((ndepths, nlevel, nabund, nteff, ngrav, nfeh))
+        if first_segment:
+            self.bgrid_init = np.zeros((ndepths, nlevel, nabund, nteff, ngrav, nfeh))
 
         for i, j, k, l in tqdm(
             np.ndindex(nabund, nteff, ngrav, nfeh),
@@ -495,7 +568,7 @@ class Grid:
             model = self._keys[f[l], g[k], t[j], x[i]]
             try:
                 if first_segment:
-                    self.bgrid[:, :, i, j, k, l] = self.directory[model]
+                    self.bgrid_init[:, :, i, j, k, l] = self.directory[model]
             except KeyError:
                 warnings.warn(
                     f"Missing Model for element {self.elem}: T={self._teff[t[j]]}, logg={self._grav[g[k]]}, feh={self._feh[f[l]]}, abund={self._xfe[x[i]]:.2f}"
@@ -510,9 +583,9 @@ class Grid:
         # Remap the previous indices into a collapsed sequence
         # level_labels = level_labels[iused]
         if self.iused is not None:
-            self.bgrid = self.bgrid[self.iused, ...]
+            self.bgrid = self.bgrid_init[self.iused, ...]
         else:
-            self.bgrid = self.bgrid[False]
+            self.bgrid = self.bgrid_init[False]
 
         self._points = (
             self._xfe[x],
@@ -1022,7 +1095,7 @@ class NLTE(Collection):
     def _citation_info(self, value):
         pass
 
-    
+    # @profile
     def update_coefficients(self, sme, dll, lfs_nlte, first_segment):
         """pass departure coefficients to C library"""
 
@@ -1057,6 +1130,7 @@ class NLTE(Collection):
             # Call function to retrieve interpolated NLTE departure coefficients
             # the abundances for NLTE are handled in the H-12 format
             grid = self.get_grid(sme, elem, lfs_nlte)
+
             if not np.any(grid.iused):
                 # No lines are found for this element
                 # remove it from the elements after this loop
@@ -1095,8 +1169,9 @@ class NLTE(Collection):
             raise ValueError(f"Element {elem} has not been prepared for NLTE")
 
         # The grids are cached in the NLTE object, but not saved
-        if elem in self.grid_data.keys() and 'use_indices' not in sme.linelist._lines.columns:
+        if elem in self.grid_data.keys():
             grid = self.grid_data[elem]
+            grid.renew_linelist(sme)
         else:
             grid = Grid(
                 sme,

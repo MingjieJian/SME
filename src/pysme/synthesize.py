@@ -30,7 +30,6 @@ from contextlib import redirect_stdout
 from copy import deepcopy
 from pqdm.processes import pqdm
 
-import pickle
 
 # Temp solution
 import pandas as pd
@@ -780,6 +779,7 @@ class Synthesizer:
                 if ipres_segment != 0:
                     del_wav += sme.linelist['wlcent'] / ipres_segment
                 indices = (~((sme.linelist['line_range_e'] < wbeg - del_wav - line_margin) | (sme.linelist['line_range_s'] > wend + del_wav + line_margin))) & (sme.linelist['central_depth'] > sme.cdr_depth_thres)
+                # logger.info(f"There are {len(sme.linelist[indices][np.char.find(sme.linelist[indices]['species'], 'Fe') >= 0])} Fe lines in sub linelist.")
                 _ = dll.InputLineList(sme.linelist[indices])
                 sme.linelist._lines['use_indices'] = indices
         if hasattr(updateLineList, "__len__") and len(updateLineList) > 0:
