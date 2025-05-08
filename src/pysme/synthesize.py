@@ -29,7 +29,9 @@ from .sme import SME_Structure
 from contextlib import redirect_stdout
 from copy import deepcopy
 from pqdm.processes import pqdm
+from pqdm import threads
 
+# from memory_profiler import profile
 
 # Temp solution
 import pandas as pd
@@ -487,6 +489,7 @@ class Synthesizer:
         else:
             return dll_id
     
+    # @profile
     def synthesize_spectrum(
         self,
         sme,
@@ -876,7 +879,8 @@ class Synthesizer:
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    def update_cdf(self, sme):
+    # @profile
+    def update_cdf(self, sme, mode='thread'):
         '''
         Update or get the central depth and wavelength range of a line list.
         Author: Mingjie Jian
@@ -900,7 +904,8 @@ class Synthesizer:
             if key not in exclude_keys and 'cscale' not in key and 'vrad' not in key:
                 setattr(sub_sme_init, key, deepcopy(value))
         sub_sme_init.wave = np.arange(5000, 5010, 1)
-        sub_sme_init.linelist = None
+        sub_sme_init.linelist = sme.linelist[:1]
+        sub_sme_init = self.synthesize_spectrum(sub_sme_init)
 
         for i in range(N_chunk):
             sub_sme.append(deepcopy(sub_sme_init))
@@ -912,14 +917,21 @@ class Synthesizer:
                 else:
                     with redirect_stdout(open(f"/dev/null", 'w')):
                         sub_sme[i] = self.synthesize_spectrum(sub_sme[i])
-        # return sub_sme
-        if parallel:
-            if pysme_out:
-                sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
-            else:
-                with redirect_stdout(open(f"/dev/null", 'w')):
+        
+        if mode == 'thread':
+            if parallel:
+                if pysme_out:
+                    sub_sme = threads.pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+                else:
+                    with redirect_stdout(open(f"/dev/null", 'w')):
+                        sub_sme = threads.pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+        elif mode == 'pdqm':
+            if parallel:
+                if pysme_out:
                     sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
-
+                else:
+                    with redirect_stdout(open(f"/dev/null", 'w')):
+                        sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
         # Get the central depth
         for i in range(N_chunk):
             sub_linelist[i] = sub_sme[i].linelist
