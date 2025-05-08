@@ -879,8 +879,7 @@ class Synthesizer:
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    # @profile
-    def update_cdf(self, sme, mode='thread'):
+    def update_cdf(self, sme, mode='pqdm'):
         '''
         Update or get the central depth and wavelength range of a line list.
         Author: Mingjie Jian
