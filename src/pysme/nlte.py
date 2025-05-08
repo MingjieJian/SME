@@ -256,6 +256,7 @@ class DirectAccessFile:
 class Grid:
     """NLTE Grid class that handles all NLTE data reading and interpolation"""
 
+    # @profile
     def __init__(
         self,
         sme,
@@ -550,14 +551,16 @@ class Grid:
 
         # Read the models with those parameters, and store depth and level
         # Create storage array
-        ndepths, nlevel = self.directory[self._keys[0, 0, 0, 0]].shape
+        nlevel, ndepths = self.directory[self._keys[0, 0, 0, 0]].shape
         nabund = len(x)
         nteff = len(t)
         ngrav = len(g)
         nfeh = len(f)
 
         if first_segment:
-            self.bgrid_init = np.zeros((ndepths, nlevel, nabund, nteff, ngrav, nfeh))
+            # self.bgrid_init = np.zeros((nlevel, ndepths, nabund, nteff, ngrav, nfeh))
+            niused = np.sum(np.array(self.iused))
+            self.bgrid = np.zeros((niused, ndepths, nabund, nteff, ngrav, nfeh))
 
         for i, j, k, l in tqdm(
             np.ndindex(nabund, nteff, ngrav, nfeh),
@@ -568,11 +571,15 @@ class Grid:
             model = self._keys[f[l], g[k], t[j], x[i]]
             try:
                 if first_segment:
-                    self.bgrid_init[:, :, i, j, k, l] = self.directory[model]
+                    # self.bgrid_init[:, :, i, j, k, l] = self.directory[model]
+                    # logger.info(f'self.directory[model] () shape: {self.directory[model].shape}')
+                    self.bgrid[:, :, i, j, k, l] = self.directory[model][self.iused, ...]
+                    # logger.info(f'self.directory[model] () shape: {self.directory[model][self.iused, ...].shape}')
             except KeyError:
                 warnings.warn(
                     f"Missing Model for element {self.elem}: T={self._teff[t[j]]}, logg={self._grav[g[k]]}, feh={self._feh[f[l]]}, abund={self._xfe[x[i]]:.2f}"
                 )
+
         mask = np.zeros(self._depth.shape[:-1], bool)
         for i, j, k in itertools.product(f, g, t):
             mask[i, j, k] = True
@@ -583,7 +590,11 @@ class Grid:
         # Remap the previous indices into a collapsed sequence
         # level_labels = level_labels[iused]
         if self.iused is not None:
-            self.bgrid = self.bgrid_init[self.iused, ...]
+            pass
+            # self.bgrid = self.bgrid_init[self.iused, ...]
+            # logger.info(f'self.bgrid: {self.bgrid[0, :, 0, 0, 0, 0]}')
+            # logger.info(f'self.bgrid: {self.bgrid_init_t[0, :, 0, 0, 0, 0]}')
+            # logger.info(f'self.bgrid_init[False]: {self.bgrid_init[False]}')
         else:
             self.bgrid = self.bgrid_init[False]
 
@@ -1163,6 +1174,7 @@ class NLTE(Collection):
 
         return sme
 
+    # @profile
     def get_grid(self, sme, elem, lfs_nlte):
         """Read and interpolate the NLTE grid for the current element and parameters"""
         if self.grids[elem] is None:
