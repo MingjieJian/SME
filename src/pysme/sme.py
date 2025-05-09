@@ -302,6 +302,8 @@ class SME_Structure(Parameters):
         self.cdr_depth_thres = 0.0
         self.tdnlte_H = False
 
+        self.show_progress_bars = False
+
         self.meta["object"] = kwargs.get("obs_name", "")
         try:
             self.linelist = LineList(**kwargs)

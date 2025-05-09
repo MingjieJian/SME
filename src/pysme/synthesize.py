@@ -29,8 +29,9 @@ from .sme import SME_Structure
 from contextlib import redirect_stdout
 from copy import deepcopy
 from pqdm.processes import pqdm
+# from pqdm import threads
 
-import pickle
+# from memory_profiler import profile
 
 # Temp solution
 import pandas as pd
@@ -488,6 +489,7 @@ class Synthesizer:
         else:
             return dll_id
     
+    # @profile
     def synthesize_spectrum(
         self,
         sme,
@@ -718,6 +720,7 @@ class Synthesizer:
         # Cleanup
         return result
 
+    # @profile
     def synthesize_segment(
         self,
         sme,
@@ -780,6 +783,7 @@ class Synthesizer:
                 if ipres_segment != 0:
                     del_wav += sme.linelist['wlcent'] / ipres_segment
                 indices = (~((sme.linelist['line_range_e'] < wbeg - del_wav - line_margin) | (sme.linelist['line_range_s'] > wend + del_wav + line_margin))) & (sme.linelist['central_depth'] > sme.cdr_depth_thres)
+                # logger.info(f"There are {len(sme.linelist[indices][np.char.find(sme.linelist[indices]['species'], 'Fe') >= 0])} Fe lines in sub linelist.")
                 _ = dll.InputLineList(sme.linelist[indices])
                 sme.linelist._lines['use_indices'] = indices
         if hasattr(updateLineList, "__len__") and len(updateLineList) > 0:
@@ -876,12 +880,12 @@ class Synthesizer:
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    def update_cdf(self, sme):
+    def update_cdf(self, sme, mode='pqdm'):
         '''
-        Update or get the central depth and wavelength range of a line list.
+        Update or get the central depth and wavelength range of a line list. This version separate the parallel and non-parallel mode completely.
         Author: Mingjie Jian
         '''
-        
+
         N_line_chunk, parallel, n_jobs, pysme_out = sme.cdr_N_line_chunk, sme.cdr_parallel, sme.cdr_n_jobs, sme.cdr_pysme_out
 
         # Decide how many chunks to be divided
@@ -893,39 +897,49 @@ class Synthesizer:
         if sum(len(item) for item in sub_linelist) != len(sme.linelist):
             raise ValueError
         
-        sub_sme = []
         sub_sme_init = SME_Structure()
-        exclude_keys = ['wave', 'synth', 'spec', 'uncs']
+        exclude_keys = ['_wave', '_synth', '_spec', '_uncs', '_mask', '_SME_Structure__wran', '_normalize_by_continuum', '_specific_intensities_only', '_telluric', '__cont', '_linelist', '_fitparameters', '_fitresults']
         for key, value in sme.__dict__.items():
             if key not in exclude_keys and 'cscale' not in key and 'vrad' not in key:
                 setattr(sub_sme_init, key, deepcopy(value))
         sub_sme_init.wave = np.arange(5000, 5010, 1)
-        sub_sme_init.linelist = None
 
-        for i in range(N_chunk):
-            sub_sme.append(deepcopy(sub_sme_init))
-            sub_sme[i].linelist = sub_linelist[i]
-            
-            if not parallel:
-                if pysme_out:
-                    sub_sme[i] = self.synthesize_spectrum(sub_sme[i])
+        if not parallel:
+            for i in tqdm(range(N_chunk)):
+                sub_sme_init.linelist = sub_linelist[i]
+                sub_sme_init = self.synthesize_spectrum(sub_sme_init)
+
+                if i == 0:
+                    stack_linelist = deepcopy(sub_sme_init.linelist)
                 else:
-                    with redirect_stdout(open(f"/dev/null", 'w')):
-                        sub_sme[i] = self.synthesize_spectrum(sub_sme[i])
-        # return sub_sme
-        if parallel:
+                    stack_linelist._lines = pd.concat([stack_linelist._lines, sub_sme_init.linelist._lines])
+        else:
+            # Parallel case, not done yet.
+            sub_sme = []
+            sub_sme_init.linelist = sme.linelist[:1]
+            sub_sme_init = self.synthesize_spectrum(sub_sme_init)
+            for i in range(N_chunk):
+                sub_sme.append(deepcopy(sub_sme_init))
+                sub_sme[i].linelist = sub_linelist[i]
+        
+            # if mode == 'thread':
+            #     if pysme_out:
+            #         sub_sme = threads.pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+            #     else:
+            #         with redirect_stdout(open(f"/dev/null", 'w')):
+            #             sub_sme = threads.pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+            # elif mode == 'pdqm':
             if pysme_out:
                 sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
             else:
                 with redirect_stdout(open(f"/dev/null", 'w')):
                     sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
-
-        # Get the central depth
-        for i in range(N_chunk):
-            sub_linelist[i] = sub_sme[i].linelist
-
-        stack_linelist = deepcopy(sub_linelist[0])
-        stack_linelist._lines = pd.concat([ele._lines for ele in sub_linelist])
+            
+            for i in range(N_chunk):
+                sub_linelist[i] = sub_sme[i].linelist
+            stack_linelist = deepcopy(sub_linelist[0])
+            stack_linelist._lines = pd.concat([ele._lines for ele in sub_linelist])  
+            # logger.info(f'{sub_linelist}')
 
         # Remove
         if len(stack_linelist) != len(sme.linelist):
@@ -935,7 +949,7 @@ class Synthesizer:
                 sme.linelist._lines = sme.linelist._lines.drop(column, axis=1)
         for column in ['central_depth', 'line_range_s', 'line_range_e']:
             sme.linelist._lines[column] = stack_linelist._lines[column]
-        pickle.dump([sme.linelist._lines, stack_linelist._lines], open('linelist.pkl', 'wb'))
+        # pickle.dump([sme.linelist._lines, stack_linelist._lines], open('linelist.pkl', 'wb'))
 
         # Manually change the depth of all H 1 lines to 1, to include them back.
         sme.linelist._lines.loc[sme.linelist['species'] == 'H 1', 'central_depth'] = 1 
@@ -949,6 +963,88 @@ class Synthesizer:
         sme.linelist.cdepth_range_paras = [sme.teff, sme.logg, sme.monh, sme.vmic]
 
         return sme
+
+    # def update_cdf_(self, sme, mode='pqdm'):
+    #     '''
+    #     Update or get the central depth and wavelength range of a line list. This is the old version and should not be used.
+    #     Author: Mingjie Jian
+    #     '''
+        
+    #     N_line_chunk, parallel, n_jobs, pysme_out = sme.cdr_N_line_chunk, sme.cdr_parallel, sme.cdr_n_jobs, sme.cdr_pysme_out
+
+    #     # Decide how many chunks to be divided
+    #     N_chunk = int(np.ceil(len(sme.linelist) / N_line_chunk))
+
+    #     # Divide the line list to sub line lists
+    #     sub_linelist = [sme.linelist[N_line_chunk*i:N_line_chunk*(i+1)] for i in range(N_chunk)]
+
+    #     if sum(len(item) for item in sub_linelist) != len(sme.linelist):
+    #         raise ValueError
+        
+    #     sub_sme = []
+    #     sub_sme_init = SME_Structure()
+    #     exclude_keys = ['_wave', '_synth', '_spec', '_uncs', '_mask', '_SME_Structure__wran', '_normalize_by_continuum', '_specific_intensities_only', '_telluric', '__cont', '_linelist', '_fitparameters', '_fitresults']
+    #     for key, value in sme.__dict__.items():
+    #         if key not in exclude_keys and 'cscale' not in key and 'vrad' not in key:
+    #             setattr(sub_sme_init, key, deepcopy(value))
+    #     sub_sme_init.wave = np.arange(5000, 5010, 1)
+    #     sub_sme_init.linelist = sme.linelist[:1]
+    #     sub_sme_init = self.synthesize_spectrum(sub_sme_init)
+
+    #     for i in range(N_chunk):
+    #         sub_sme.append(deepcopy(sub_sme_init))
+    #         sub_sme[i].linelist = sub_linelist[i]
+            
+    #         if not parallel:
+    #             if pysme_out:
+    #                 sub_sme[i] = self.synthesize_spectrum(sub_sme[i])
+    #             else:
+    #                 with redirect_stdout(open(f"/dev/null", 'w')):
+    #                     sub_sme[i] = self.synthesize_spectrum(sub_sme[i])
+        
+    #     if mode == 'thread':
+    #         if parallel:
+    #             if pysme_out:
+    #                 sub_sme = threads.pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+    #             else:
+    #                 with redirect_stdout(open(f"/dev/null", 'w')):
+    #                     sub_sme = threads.pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+    #     elif mode == 'pdqm':
+    #         if parallel:
+    #             if pysme_out:
+    #                 sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+    #             else:
+    #                 with redirect_stdout(open(f"/dev/null", 'w')):
+    #                     sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+    #     # Get the central depth
+    #     for i in range(N_chunk):
+    #         sub_linelist[i] = sub_sme[i].linelist
+
+    #     stack_linelist = deepcopy(sub_linelist[0])
+    #     stack_linelist._lines = pd.concat([ele._lines for ele in sub_linelist])
+
+    #     # Remove
+    #     if len(stack_linelist) != len(sme.linelist):
+    #         raise ValueError
+    #     for column in ['central_depth', 'line_range_s', 'line_range_e']:
+    #         if column in sme.linelist.columns:
+    #             sme.linelist._lines = sme.linelist._lines.drop(column, axis=1)
+    #     for column in ['central_depth', 'line_range_s', 'line_range_e']:
+    #         sme.linelist._lines[column] = stack_linelist._lines[column]
+    #     # pickle.dump([sme.linelist._lines, stack_linelist._lines], open('linelist.pkl', 'wb'))
+
+    #     # Manually change the depth of all H 1 lines to 1, to include them back.
+    #     sme.linelist._lines.loc[sme.linelist['species'] == 'H 1', 'central_depth'] = 1 
+
+    #     # Manually change the 2000 line_range to 0.01.
+    #     indices = np.abs(sme.linelist['line_range_e'] - sme.linelist['line_range_s']-2000) < 0.5
+    #     sme.linelist._lines.loc[indices, 'line_range_s'] = sme.linelist._lines.loc[indices, 'wlcent']-0.5
+    #     sme.linelist._lines.loc[indices, 'line_range_e'] = sme.linelist._lines.loc[indices, 'wlcent']+0.5
+
+    #     # Write the stellar parameters used here to the line list
+    #     sme.linelist.cdepth_range_paras = [sme.teff, sme.logg, sme.monh, sme.vmic]
+
+    #     return sme
 
     def get_H_3dnlte_correction(self, sme):
         """
