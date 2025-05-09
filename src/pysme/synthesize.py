@@ -29,9 +29,9 @@ from .sme import SME_Structure
 from contextlib import redirect_stdout
 from copy import deepcopy
 from pqdm.processes import pqdm
-from pqdm import threads
+# from pqdm import threads
 
-from memory_profiler import profile
+# from memory_profiler import profile
 
 # Temp solution
 import pandas as pd
@@ -798,7 +798,6 @@ class Synthesizer:
             dll.SetH2broad(sme.h2broad)
 
         if passNLTE:
-            logger.info('update_coefficients')
             sme.nlte.update_coefficients(sme, dll, self.lfs_nlte, sme.first_segment)        
         
         dll.InputWaveRange(wbeg-2, wend+2)
@@ -936,8 +935,11 @@ class Synthesizer:
                 with redirect_stdout(open(f"/dev/null", 'w')):
                     sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
             
+            for i in range(N_chunk):
+                sub_linelist[i] = sub_sme[i].linelist
             stack_linelist = deepcopy(sub_linelist[0])
             stack_linelist._lines = pd.concat([ele._lines for ele in sub_linelist])  
+            # logger.info(f'{sub_linelist}')
 
         # Remove
         if len(stack_linelist) != len(sme.linelist):

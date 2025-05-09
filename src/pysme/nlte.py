@@ -17,7 +17,7 @@ from .abund import elements as abund_elem
 from .data_structure import Collection, CollectionFactory, array, astype, oneof, this
 from .util import show_progress_bars
 
-from memory_profiler import profile
+# from memory_profiler import profile
 
 logger = logging.getLogger(__name__)
 
