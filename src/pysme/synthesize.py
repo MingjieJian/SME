@@ -905,7 +905,7 @@ class Synthesizer:
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    def update_cdf(self, sme, cdr_databse=None, cdr_create=False):
+    def update_cdf(self, sme, cdr_databse=None, cdr_create=False, cdr_grid_overwrite=False):
         '''
         Update or get the central depth and wavelength range of a line list. This version separate the parallel and non-parallel mode completely.
         Author: Mingjie Jian
@@ -923,7 +923,7 @@ class Synthesizer:
             raise ValueError
         
         if cdr_databse is not None:
-            self._interpolate_or_compute_and_update_linelist(sme, cdr_databse, cdr_create=cdr_create)
+            self._interpolate_or_compute_and_update_linelist(sme, cdr_databse, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite)
             return sme  # 提前结束
 
         logger.info('Using calculation to update central depth and line range.')
@@ -987,7 +987,7 @@ class Synthesizer:
 
         return sme
 
-    def _interpolate_or_compute_and_update_linelist(self, sme, cdr_database, cdepth_decimals=3, cdepth_thres=0.0001, range_decimals=2, cdr_create=False):
+    def _interpolate_or_compute_and_update_linelist(self, sme, cdr_database, cdepth_decimals=3, cdepth_thres=0.0001, range_decimals=2, cdr_create=False, cdr_grid_overwrite=False):
         teff, logg, monh = sme.teff, sme.logg, sme.monh
         param = np.array([teff, logg, monh])
 
@@ -1040,22 +1040,25 @@ class Synthesizer:
 
                 return
 
-        # 不在已有 tetra 中，继续执行原始 update_cdf 逻辑并保存
-        self.update_cdf(sme, cdr_databse=None)
-
-        mask = sme.linelist['central_depth'] >= cdepth_thres
-        filtered_df = sme.linelist[['central_depth', 'line_range_s', 'line_range_e']][mask]
-        filtered_iloc = np.where(mask)[0]  # 得到保留的行号（iloc）
-        # 四舍五入：depth保留3位，line_range保留2位
-        depth = np.round(filtered_df[:, 0], cdepth_decimals)
-        range_s = np.round(filtered_df[:, 1], range_decimals)
-        range_e = np.round(filtered_df[:, 2], range_decimals)
-
-        # 合并成 (N_valid, 4) 的矩阵：[iloc, depth, range_s, range_e]
-        line_info = np.column_stack([filtered_iloc, depth, range_s, range_e])
         fname = f"teff{teff:.0f}_logg{logg:.2f}_monh{monh:.2f}.npz"
-        logger.info(f'Saving {fname} to database.')
-        np.savez_compressed(os.path.join(cdr_database, fname), line_info=line_info)
+        if os.path.exists(os.path.join(cdr_database, fname)) and not cdr_grid_overwrite:
+            logger.info(f"{fname} exists and cdr_grid_overwrite is false, skipping generating cdr grid.")
+        else:
+            # 不在已有 tetra 中，继续执行原始 update_cdf 逻辑并保存
+            self.update_cdf(sme, cdr_databse=None)
+
+            mask = sme.linelist['central_depth'] >= cdepth_thres
+            filtered_df = sme.linelist[['central_depth', 'line_range_s', 'line_range_e']][mask]
+            filtered_iloc = np.where(mask)[0]  # 得到保留的行号（iloc）
+            # 四舍五入：depth保留3位，line_range保留2位
+            depth = np.round(filtered_df[:, 0], cdepth_decimals)
+            range_s = np.round(filtered_df[:, 1], range_decimals)
+            range_e = np.round(filtered_df[:, 2], range_decimals)
+
+            # 合并成 (N_valid, 4) 的矩阵：[iloc, depth, range_s, range_e]
+            line_info = np.column_stack([filtered_iloc, depth, range_s, range_e])
+            logger.info(f'Saving {fname} to database.')
+            np.savez_compressed(os.path.join(cdr_database, fname), line_info=line_info)
 
     def get_H_3dnlte_correction(self, sme):
         """
