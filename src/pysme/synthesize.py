@@ -525,7 +525,8 @@ class Synthesizer:
         dll_id=None,
         linelist_mode='all',
         get_opacity=False,
-        cdr_databse=None
+        cdr_databse=None,
+        cdr_create=False
     ):
         """
         Calculate the synthetic spectrum based on the parameters passed in the SME structure
@@ -624,9 +625,9 @@ class Synthesizer:
         # Calculate the line central depth and line range if necessary
         if linelist_mode == 'auto':
             logger.info(f'linelist mode: {linelist_mode}')
-            if sme.linelist.cdepth_range_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= sme.linelist.cdepth_range_paras_thres['teff'] or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= sme.linelist.cdepth_range_paras_thres['logg']) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= sme.linelist.cdepth_range_paras_thres['monh']):
+            if sme.linelist.cdepth_range_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= sme.linelist.cdepth_range_paras_thres['teff'] or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= sme.linelist.cdepth_range_paras_thres['logg']) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= sme.linelist.cdepth_range_paras_thres['monh']) or cdr_create:
                 logger.info(f'Updating linelist central depth and line range.')
-                sme = self.update_cdf(sme, cdr_databse=cdr_databse)
+                sme = self.update_cdf(sme, cdr_databse=cdr_databse, cdr_create=cdr_create)
 
         # Loop over segments
         #   Input Wavelength range and Opacity
@@ -645,7 +646,8 @@ class Synthesizer:
                 passAtmosphere=passAtmosphere,
                 passNLTE=passNLTE,
                 linelist_mode=linelist_mode,
-                get_opacity=get_opacity
+                get_opacity=get_opacity,
+                keep_line_opacity=False
             )
         for il in segments:
             if "wave" not in sme or len(sme.wave[il]) == 0:
@@ -748,6 +750,7 @@ class Synthesizer:
         sme,
         segment,
         reuse_wavelength_grid=False,
+        keep_line_opacity=False,
         dll_id=None,
         passLineList=True,
         updateLineList=False,
@@ -837,7 +840,7 @@ class Synthesizer:
             sme.mu,
             accrt=sme.accrt,  # threshold line opacity / cont opacity
             accwi=sme.accwi,
-            keep_lineop=False,
+            keep_lineop=keep_line_opacity,
             wave=wint_seg,
         )
 
@@ -902,7 +905,7 @@ class Synthesizer:
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    def update_cdf(self, sme, cdr_databse=None):
+    def update_cdf(self, sme, cdr_databse=None, cdr_create=False):
         '''
         Update or get the central depth and wavelength range of a line list. This version separate the parallel and non-parallel mode completely.
         Author: Mingjie Jian
@@ -920,10 +923,10 @@ class Synthesizer:
             raise ValueError
         
         if cdr_databse is not None:
-            logger.info('Using CDF database to update central depth and line range.')
-            self._interpolate_or_compute_and_update_linelist(sme, cdr_databse)
+            self._interpolate_or_compute_and_update_linelist(sme, cdr_databse, cdr_create=cdr_create)
             return sme  # 提前结束
 
+        logger.info('Using calculation to update central depth and line range.')
         sub_sme_init = SME_Structure()
         exclude_keys = ['_wave', '_synth', '_spec', '_uncs', '_mask', '_SME_Structure__wran', '_normalize_by_continuum', '_specific_intensities_only', '_telluric', '__cont', '_linelist', '_fitparameters', '_fitresults']
         for key, value in sme.__dict__.items():
@@ -984,16 +987,16 @@ class Synthesizer:
 
         return sme
 
-    def _interpolate_or_compute_and_update_linelist(self, sme, cdr_database, cdepth_decimals=3, cdepth_thres=0.0001, range_decimals=2):
+    def _interpolate_or_compute_and_update_linelist(self, sme, cdr_database, cdepth_decimals=3, cdepth_thres=0.0001, range_decimals=2, cdr_create=False):
         teff, logg, monh = sme.teff, sme.logg, sme.monh
         param = np.array([teff, logg, monh])
 
         param_grid, fname_map = _load_all_grid_points(cdr_database)
-
-        if len(param_grid) >= 4:
+        if len(param_grid) >= 4 and not cdr_create:
             delaunay = Delaunay(param_grid)
             simplex_index = delaunay.find_simplex(param)
             if simplex_index >= 0:
+                logger.info('Using CDF database to update central depth and line range.')
                 vertex_indices = delaunay.simplices[simplex_index]
                 vertices = param_grid[vertex_indices]
 
@@ -1026,32 +1029,19 @@ class Synthesizer:
                 # Stack and插值每列
                 for key in interpolated_arrays:
                     stacked = np.stack(vertex_arrays[key], axis=0)  # shape = (4, n_lines)
-                    logger.info(f'{vertices.shape}, {stacked.T.shape}')
-                    interp = LinearNDInterpolator(vertices, stacked.T)
-                    interpolated_arrays[key] = interp(param)
+                    interp = LinearNDInterpolator(vertices, stacked)
+                    interpolated_arrays[key] = interp(param)[0]
 
                 # 写入 sme.linelist
                 sme.linelist._lines['central_depth'] = interpolated_arrays['central_depth']
                 sme.linelist._lines['line_range_s'] = interpolated_arrays['line_range_s']
                 sme.linelist._lines['line_range_e'] = interpolated_arrays['line_range_e']
+                sme.linelist.cdepth_range_paras = [sme.teff, sme.logg, sme.monh, sme.vmic]
+
                 return
 
         # 不在已有 tetra 中，继续执行原始 update_cdf 逻辑并保存
         self.update_cdf(sme, cdr_databse=None)
-
-        # # 保存为 line_info 格式
-        # line_info = []
-        # for i, row in sme.linelist._lines.iterrows():
-        #     d = round(row['central_depth'], 3)
-        #     if d < 0.0001:
-        #         continue
-        #     s = round(row['line_range_s'], 2)
-        #     e = round(row['line_range_e'], 2)
-        #     line_info.append([i, d, s, e])
-        # line_info = np.array(line_info, dtype=np.float32)
-
-        # fname = f"teff{teff:.0f}_logg{logg:.2f}_monh{monh:.2f}.npz"
-        # np.savez_compressed(os.path.join(cdr_database, fname), line_info=line_info)
 
         mask = sme.linelist['central_depth'] >= cdepth_thres
         filtered_df = sme.linelist[['central_depth', 'line_range_s', 'line_range_e']][mask]
@@ -1064,6 +1054,7 @@ class Synthesizer:
         # 合并成 (N_valid, 4) 的矩阵：[iloc, depth, range_s, range_e]
         line_info = np.column_stack([filtered_iloc, depth, range_s, range_e])
         fname = f"teff{teff:.0f}_logg{logg:.2f}_monh{monh:.2f}.npz"
+        logger.info(f'Saving {fname} to database.')
         np.savez_compressed(os.path.join(cdr_database, fname), line_info=line_info)
 
     def get_H_3dnlte_correction(self, sme):
