@@ -526,7 +526,8 @@ class Synthesizer:
         linelist_mode='all',
         get_opacity=False,
         cdr_databse=None,
-        cdr_create=False
+        cdr_create=False,
+        keep_line_opacity=False
     ):
         """
         Calculate the synthetic spectrum based on the parameters passed in the SME structure
@@ -647,7 +648,7 @@ class Synthesizer:
                 passNLTE=passNLTE,
                 linelist_mode=linelist_mode,
                 get_opacity=get_opacity,
-                keep_line_opacity=False
+                keep_line_opacity=keep_line_opacity
             )
         for il in segments:
             if "wave" not in sme or len(sme.wave[il]) == 0:
@@ -775,7 +776,7 @@ class Synthesizer:
             or create a new one, depending on the linelist. Default: False
         keep_line_opacity : bool
             Whether to reuse existing line opacities or not. This should be
-            True iff the opacities have been calculated in another segment.
+            True if the opacities have been calculated in another segment.
 
         Returns
         -------
@@ -840,7 +841,7 @@ class Synthesizer:
             sme.mu,
             accrt=sme.accrt,  # threshold line opacity / cont opacity
             accwi=sme.accwi,
-            keep_lineop=keep_line_opacity,
+            keep_lineop=keep_line_opacity and not sme.first_segment,
             wave=wint_seg,
         )
 
