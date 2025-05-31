@@ -721,9 +721,13 @@ class Synthesizer:
 
             if passLineList and self.update_cdf_switch:
                 s = 0
-                sme.linelist._lines['central_depth'] = central_depth[s]
-                sme.linelist._lines['line_range_s'] = line_range[s][:, 0]
-                sme.linelist._lines['line_range_e'] = line_range[s][:, 1]
+                if len(central_depth[s] > 0):
+                    sme.linelist._lines.loc[~sme.line_ion_mask, 'central_depth'] = central_depth[s]
+                    sme.linelist._lines.loc[sme.line_ion_mask, 'central_depth'] = np.nan
+                    sme.linelist._lines.loc[~sme.line_ion_mask, 'line_range_s'] = line_range[s][:, 0]
+                    sme.linelist._lines.loc[~sme.line_ion_mask, 'line_range_e'] = line_range[s][:, 1]
+                    sme.linelist._lines.loc[sme.line_ion_mask, 'line_range_s'] = np.nan
+                    sme.linelist._lines.loc[sme.line_ion_mask, 'line_range_e'] = np.nan
 
             if sme.cscale_type in ["spline", "spline+mask"]:
                 sme.cscale = np.asarray(cscale)
