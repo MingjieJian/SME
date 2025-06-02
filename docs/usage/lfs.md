@@ -25,8 +25,6 @@ the available filenames and PySME will fetch the file on your next run.
   - atlas12.sav
   - atlas9_vmic0.0.sav
   - atlas9_vmic2.0.sav
-  - interpatlas12.pro
-  - interpmarcs2012.pro
   - ll_vmic2.0.sav
 
 ### NLTE grids:

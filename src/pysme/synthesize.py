@@ -11,6 +11,7 @@ from scipy.interpolate import interp1d
 from scipy.interpolate import CubicSpline
 from scipy.ndimage import convolve
 from tqdm import tqdm
+from scipy.spatial.distance import cdist
 
 from . import broadening
 from .atmosphere.interpolation import AtmosphereInterpolator
@@ -50,7 +51,7 @@ __DLL_DICT__ = {}
 __DLL_IDS__ = {}
 
 def _extract_params_from_fname(fname):
-    match = re.match(r'teff([0-9.]+)_logg([0-9.]+)_monh([-0-9.]+)\.npz', fname)
+    match = re.match(r'teff([0-9.]+)_logg([0-9.]+)_monh([-0-9.]+)_vmic([0-9.]+)\.npz', fname)
     if match:
         return tuple(map(float, match.groups()))
     return None
@@ -79,7 +80,7 @@ class Synthesizer:
         self.atmosphere_interpolator = None
         # This stores a reference to the currently used sme structure, so we only log it once
         self.known_sme = None
-        self.update_cdf_switch = False
+        self.update_cdr_switch = False
         logger.info("Don't forget to cite your sources. Use sme.citation()")
 
     def get_atmosphere(self, sme):
@@ -528,7 +529,8 @@ class Synthesizer:
         get_opacity=False,
         cdr_databse=None,
         cdr_create=False,
-        keep_line_opacity=False
+        keep_line_opacity=False,
+        vbroad_expend_ratio=2
     ):
         """
         Calculate the synthetic spectrum based on the parameters passed in the SME structure
@@ -615,16 +617,16 @@ class Synthesizer:
             logger.info(f'linelist mode: {linelist_mode}')
             if sme.linelist.cdepth_range_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= sme.linelist.cdepth_range_paras_thres['teff'] or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= sme.linelist.cdepth_range_paras_thres['logg']) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= sme.linelist.cdepth_range_paras_thres['monh']) or cdr_create:
                 logger.info(f'Updating linelist central depth and line range.')
-                sme = self.update_cdf(sme, cdr_databse=cdr_databse, cdr_create=cdr_create)
+                sme = self.update_cdr(sme, cdr_databse=cdr_databse, cdr_create=cdr_create)
 
         # Input Model data to C library
         dll.SetLibraryPath()
         if passLineList:
             if linelist_mode == 'auto':
                 line_indices = sme.linelist['wlcent'] < 0
-                v_broad = np.sqrt(sme.vmic**2 + sme.vmac**2 + sme.vsini**2)
+                v_broad = np.sqrt(sme.vmac**2 + sme.vsini**2 + (clight/sme.ipres)**2)
                 for i in range(sme.nseg):
-                    line_indices |= (sme.linelist['line_range_e'] > sme.wran[i][0] * (1 - v_broad/clight)) & (sme.linelist['line_range_s'] < sme.wran[i][1] * (1 + v_broad/clight))
+                    line_indices |= (sme.linelist['line_range_e'] > sme.wran[i][0] * (1 - vbroad_expend_ratio*v_broad/clight)) & (sme.linelist['line_range_s'] < sme.wran[i][1] * (1 + vbroad_expend_ratio*v_broad/clight))
                 line_indices &= sme.linelist['central_depth'] > sme.cdr_depth_thres
                 sme.linelist._lines['use_indices'] = line_indices
                 line_ion_mask = dll.InputLineList(sme.linelist[line_indices])
@@ -719,7 +721,7 @@ class Synthesizer:
                 # sme.central_depth[s] = central_depth[s]
                 # sme.line_range[s] = line_range[s]
 
-            if passLineList and self.update_cdf_switch:
+            if passLineList and self.update_cdr_switch:
                 s = 0
                 if len(central_depth[s] > 0):
                     sme.linelist._lines.loc[~sme.line_ion_mask, 'central_depth'] = central_depth[s]
@@ -914,14 +916,14 @@ class Synthesizer:
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    def update_cdf(self, sme, cdr_databse=None, cdr_create=False, cdr_grid_overwrite=False):
+    def update_cdr(self, sme, cdr_databse=None, cdr_create=False, cdr_grid_overwrite=False, mode='interp'):
         '''
         Update or get the central depth and wavelength range of a line list. This version separate the parallel and non-parallel mode completely.
         Author: Mingjie Jian
         '''
 
         N_line_chunk, parallel, n_jobs, pysme_out = sme.cdr_N_line_chunk, sme.cdr_parallel, sme.cdr_n_jobs, sme.cdr_pysme_out
-        self.update_cdf_switch = True
+        self.update_cdr_switch = True
 
         # Decide how many chunks to be divided
         N_chunk = int(np.ceil(len(sme.linelist) / N_line_chunk))
@@ -933,7 +935,7 @@ class Synthesizer:
             raise ValueError
         
         if cdr_databse is not None:
-            self._interpolate_or_compute_and_update_linelist(sme, cdr_databse, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite)
+            self._interpolate_or_compute_and_update_linelist(sme, cdr_databse, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite, mode=mode)
             return sme  # 提前结束
 
         logger.info('Using calculation to update central depth and line range.')
@@ -994,82 +996,116 @@ class Synthesizer:
         # Write the stellar parameters used here to the line list
         sme.linelist.cdepth_range_paras = [sme.teff, sme.logg, sme.monh, sme.vmic]
 
-        self.update_cdf_switch = False
+        self.update_cdr_switch = False
 
         return sme
 
-    def _interpolate_or_compute_and_update_linelist(self, sme, cdr_database, cdepth_decimals=3, cdepth_thres=0.0001, range_decimals=2, cdr_create=False, cdr_grid_overwrite=False):
-        teff, logg, monh = sme.teff, sme.logg, sme.monh
-        param = np.array([teff, logg, monh])
+    def _interpolate_or_compute_and_update_linelist(
+        self, sme, cdr_database, cdepth_decimals=3, cdepth_thres=0.0001,
+        range_decimals=2, cdr_create=False, cdr_grid_overwrite=False,
+        mode='interp'
+    ):
+        teff, logg, monh, vmic = sme.teff, sme.logg, sme.monh, sme.vmic
+        param = np.array([teff, logg, monh, vmic])
 
         param_grid, fname_map = _load_all_grid_points(cdr_database)
-        if len(param_grid) >= 4 and not cdr_create:
-            delaunay = Delaunay(param_grid)
-            simplex_index = delaunay.find_simplex(param)
-            if simplex_index >= 0:
-                logger.info('Using CDF database to update central depth and line range.')
-                vertex_indices = delaunay.simplices[simplex_index]
-                vertices = param_grid[vertex_indices]
+
+        if len(param_grid) > 0:
+
+            thres = sme.linelist.cdepth_range_paras_thres
+            lower = np.array([teff - thres['teff'], logg - thres['logg'], monh - thres['monh'], vmic - thres['vmic']])
+            upper = np.array([teff + thres['teff'], logg + thres['logg'], monh + thres['monh'], vmic + thres['vmic']])
+            in_box_mask = np.all((param_grid >= lower) & (param_grid <= upper), axis=1)
+            filtered_grid = param_grid[in_box_mask]
+
+            if mode == 'interp' and len(filtered_grid) >= 5 and not cdr_create:
+                delaunay = Delaunay(filtered_grid)
+                simplex_index = delaunay.find_simplex(param)
+                if simplex_index >= 0:
+                    logger.info('[CDF] Using 4D interpolation from grid database.')
+                    vertex_indices = delaunay.simplices[simplex_index]
+                    vertices = filtered_grid[vertex_indices]
+
+                    n_lines_total = len(sme.linelist)
+                    interpolated_arrays = {
+                        'central_depth': np.zeros(n_lines_total, dtype=np.float32),
+                        'line_range_s':  np.full(n_lines_total, np.nan, dtype=np.float32),
+                        'line_range_e':  np.full(n_lines_total, np.nan, dtype=np.float32),
+                    }
+                    vertex_arrays = {k: [] for k in interpolated_arrays}
+                    for pt in vertices:
+                        logger.info(f'Using {fname_map[tuple(pt)]}')
+                        data = np.load(os.path.join(cdr_database, fname_map[tuple(pt)]))['line_info']
+                        iloc = data[:, 0].astype(int)
+
+                        arr_cdepth = np.zeros(n_lines_total, dtype=np.float32)
+                        arr_lrs    = np.full(n_lines_total, np.nan, dtype=np.float32)
+                        arr_lre    = np.full(n_lines_total, np.nan, dtype=np.float32)
+                        arr_cdepth[iloc] = data[:, 1]
+                        arr_lrs[iloc]    = data[:, 2]
+                        arr_lre[iloc]    = data[:, 3]
+
+                        vertex_arrays['central_depth'].append(arr_cdepth)
+                        vertex_arrays['line_range_s'].append(arr_lrs)
+                        vertex_arrays['line_range_e'].append(arr_lre)
+
+                    for key in interpolated_arrays:
+                        stacked = np.stack(vertex_arrays[key], axis=0)
+                        interp  = LinearNDInterpolator(vertices, stacked)
+                        interpolated_arrays[key] = interp(param)[0]
+
+                    sme.linelist._lines['central_depth'] = interpolated_arrays['central_depth']
+                    sme.linelist._lines['line_range_s']  = interpolated_arrays['line_range_s']
+                    sme.linelist._lines['line_range_e']  = interpolated_arrays['line_range_e']
+                    sme.linelist.cdepth_range_paras = [teff, logg, monh, vmic]
+                    return
+
+            elif mode == 'nearest' and len(filtered_grid) > 0 and not cdr_create:
+                # box 内找到最近的 grid 点
+                dists = cdist(filtered_grid, param[None, :])
+                i_nearest = np.argmin(dists)
+                nearest_pt = filtered_grid[i_nearest]
+                logger.info(f'[CDF] Using nearest grid point {nearest_pt} in box for direct assignment.')
+
+                data = np.load(os.path.join(cdr_database, fname_map[tuple(nearest_pt)]))['line_info']
+                iloc = data[:, 0].astype(int)
 
                 n_lines_total = len(sme.linelist)
-                interpolated_arrays = {
-                    'central_depth': np.zeros(n_lines_total, dtype=np.float32),
-                    'line_range_s': np.full(n_lines_total, np.nan, dtype=np.float32),
-                    'line_range_e': np.full(n_lines_total, np.nan, dtype=np.float32),
-                }
+                arr_cdepth = np.zeros(n_lines_total, dtype=np.float32)
+                arr_lrs    = np.full(n_lines_total, np.nan, dtype=np.float32)
+                arr_lre    = np.full(n_lines_total, np.nan, dtype=np.float32)
 
-                # 构建每个格点上的完整长度数组
-                vertex_arrays = {name: [] for name in interpolated_arrays}
-                for pt in vertices:
-                    logger.info(f'Using {fname_map[tuple(pt)]}')
-                    data = np.load(os.path.join(cdr_database, fname_map[tuple(pt)]))['line_info']
-                    iloc = data[:, 0].astype(int)
+                arr_cdepth[iloc] = data[:, 1]
+                arr_lrs[iloc]    = data[:, 2]
+                arr_lre[iloc]    = data[:, 3]
 
-                    arr_cdepth = np.zeros(n_lines_total, dtype=np.float32)
-                    arr_lrs = np.full(n_lines_total, np.nan, dtype=np.float32)
-                    arr_lre = np.full(n_lines_total, np.nan, dtype=np.float32)
-
-                    arr_cdepth[iloc] = data[:, 1]
-                    arr_lrs[iloc] = data[:, 2]
-                    arr_lre[iloc] = data[:, 3]
-
-                    vertex_arrays['central_depth'].append(arr_cdepth)
-                    vertex_arrays['line_range_s'].append(arr_lrs)
-                    vertex_arrays['line_range_e'].append(arr_lre)
-
-                # Stack and插值每列
-                for key in interpolated_arrays:
-                    stacked = np.stack(vertex_arrays[key], axis=0)  # shape = (4, n_lines)
-                    interp = LinearNDInterpolator(vertices, stacked)
-                    interpolated_arrays[key] = interp(param)[0]
-
-                # 写入 sme.linelist
-                sme.linelist._lines['central_depth'] = interpolated_arrays['central_depth']
-                sme.linelist._lines['line_range_s'] = interpolated_arrays['line_range_s']
-                sme.linelist._lines['line_range_e'] = interpolated_arrays['line_range_e']
-                sme.linelist.cdepth_range_paras = [sme.teff, sme.logg, sme.monh, sme.vmic]
-
+                sme.linelist._lines['central_depth'] = arr_cdepth
+                sme.linelist._lines['line_range_s']  = arr_lrs
+                sme.linelist._lines['line_range_e']  = arr_lre
+                sme.linelist.cdepth_range_paras = [teff, logg, monh, vmic]
                 return
 
-        fname = f"teff{teff:.0f}_logg{logg:.2f}_monh{monh:.2f}.npz"
-        if os.path.exists(os.path.join(cdr_database, fname)) and not cdr_grid_overwrite:
+        # ---------- fallback: compute and save ----------
+        fname = f"teff{teff:.0f}_logg{logg:.1f}_monh{monh:.1f}_vmic{vmic:.1f}.npz"
+        full_path = os.path.join(cdr_database, fname)
+        if os.path.exists(full_path) and not cdr_grid_overwrite:
             logger.info(f"{fname} exists and cdr_grid_overwrite is false, skipping generating cdr grid.")
         else:
-            # 不在已有 tetra 中，继续执行原始 update_cdf 逻辑并保存
-            self.update_cdf(sme, cdr_databse=None)
+            logger.info("[CDF] Fallback: recomputing line properties.")
+            self.update_cdr(sme, cdr_databse=None)
 
             mask = sme.linelist['central_depth'] >= cdepth_thres
             filtered_df = sme.linelist[['central_depth', 'line_range_s', 'line_range_e']][mask]
-            filtered_iloc = np.where(mask)[0]  # 得到保留的行号（iloc）
-            # 四舍五入：depth保留3位，line_range保留2位
+            filtered_iloc = np.where(mask)[0]
+
             depth = np.round(filtered_df[:, 0], cdepth_decimals)
             range_s = np.round(filtered_df[:, 1], range_decimals)
             range_e = np.round(filtered_df[:, 2], range_decimals)
 
-            # 合并成 (N_valid, 4) 的矩阵：[iloc, depth, range_s, range_e]
             line_info = np.column_stack([filtered_iloc, depth, range_s, range_e])
             logger.info(f'Saving {fname} to database.')
-            np.savez_compressed(os.path.join(cdr_database, fname), line_info=line_info)
+            np.savez_compressed(full_path, line_info=line_info)
+
 
     def get_H_3dnlte_correction(self, sme):
         """
