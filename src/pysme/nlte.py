@@ -500,7 +500,7 @@ class Grid:
         rabund = sel - sfe
         return rabund
 
-    def get(self, abund, teff, logg, monh, atmo, first_segment=True):
+    def get(self, abund, teff, logg, monh, atmo):
         rabund = self.scaled_rel_abund(abund)
 
         if (len(self.limits) == 0 or not (
@@ -509,12 +509,12 @@ class Grid:
             and (self.limits["grav"][0] <= logg <= self.limits["grav"][-1])
             and (self.limits["feh"][0] <= monh <= self.limits["feh"][-1])
         )):
-            _ = self.read_grid(rabund, teff, logg, monh, first_segment)
+            _ = self.read_grid(rabund, teff, logg, monh)
 
         return self.interpolate(rabund, teff, logg, monh, atmo)
 
     # @profile
-    def read_grid(self, rabund, teff, logg, monh, first_segment):
+    def read_grid(self, rabund, teff, logg, monh):
         """Read the NLTE coefficients from the nlte_grid files for the given element
         The class will cache subgrid_size points around the target values as well
 
@@ -551,16 +551,13 @@ class Grid:
 
         # Read the models with those parameters, and store depth and level
         # Create storage array
-        nlevel, ndepths = self.directory[self._keys[0, 0, 0, 0]].shape
+        ndepths, nlevel = self.directory[self._keys[0, 0, 0, 0]].shape
         nabund = len(x)
         nteff = len(t)
         ngrav = len(g)
         nfeh = len(f)
 
-        if first_segment:
-            # self.bgrid_init = np.zeros((nlevel, ndepths, nabund, nteff, ngrav, nfeh))
-            niused = np.sum(np.array(self.iused))
-            self.bgrid = np.zeros((niused, ndepths, nabund, nteff, ngrav, nfeh))
+        self.bgrid = np.zeros((ndepths, nlevel, nabund, nteff, ngrav, nfeh))
 
         for i, j, k, l in tqdm(
             np.ndindex(nabund, nteff, ngrav, nfeh),
@@ -570,16 +567,11 @@ class Grid:
         ):
             model = self._keys[f[l], g[k], t[j], x[i]]
             try:
-                if first_segment:
-                    # self.bgrid_init[:, :, i, j, k, l] = self.directory[model]
-                    # logger.info(f'self.directory[model] () shape: {self.directory[model].shape}')
-                    self.bgrid[:, :, i, j, k, l] = self.directory[model][self.iused, ...]
-                    # logger.info(f'self.directory[model] () shape: {self.directory[model][self.iused, ...].shape}')
+                self.bgrid[:, :, i, j, k, l] = self.directory[model]
             except KeyError:
                 warnings.warn(
                     f"Missing Model for element {self.elem}: T={self._teff[t[j]]}, logg={self._grav[g[k]]}, feh={self._feh[f[l]]}, abund={self._xfe[x[i]]:.2f}"
                 )
-
         mask = np.zeros(self._depth.shape[:-1], bool)
         for i, j, k in itertools.product(f, g, t):
             mask[i, j, k] = True
@@ -590,13 +582,9 @@ class Grid:
         # Remap the previous indices into a collapsed sequence
         # level_labels = level_labels[iused]
         if self.iused is not None:
-            pass
-            # self.bgrid = self.bgrid_init[self.iused, ...]
-            # logger.info(f'self.bgrid: {self.bgrid[0, :, 0, 0, 0, 0]}')
-            # logger.info(f'self.bgrid: {self.bgrid_init_t[0, :, 0, 0, 0, 0]}')
-            # logger.info(f'self.bgrid_init[False]: {self.bgrid_init[False]}')
+            self.bgrid = self.bgrid[self.iused, ...]
         else:
-            self.bgrid = self.bgrid_init[False]
+            self.bgrid = self.bgrid[False]
 
         self._points = (
             self._xfe[x],
@@ -1107,7 +1095,7 @@ class NLTE(Collection):
         pass
 
     # @profile
-    def update_coefficients(self, sme, dll, lfs_nlte, first_segment):
+    def update_coefficients(self, sme, dll, lfs_nlte):
         """pass departure coefficients to C library"""
 
         # Reset the departure coefficient every time, just to be sure
@@ -1151,7 +1139,7 @@ class NLTE(Collection):
                 )
                 marked_for_removal += [elem]
                 continue
-            bmat = grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo, first_segment)
+            bmat = grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo)
             if bmat is None or grid.linerefs.size == 0:
                 logger.warning(
                     "No %s NLTE lines found, removing it from NLTE calculations",
