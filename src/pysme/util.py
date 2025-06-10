@@ -524,3 +524,27 @@ def interpolate_H_spectrum(
             result.append([mu, wl, wmu, Ic_interp, I_interp])
 
     return pd.DataFrame(result, columns=['mu', 'wl', 'wmu', 'Ic_interp', 'I_interp']), in_boundary
+
+def load_cdr_to_linelist(sme, filepath):
+    """
+    Load a compressed .npz CDR file and assign its content to sme.linelist._lines.
+
+    Parameters:
+    - sme: SME object with .linelist._lines dictionary
+    - filepath: full path to the .npz file with 'line_info' inside
+    """
+    data = np.load(filepath)['line_info']
+    iloc = data[:, 0].astype(int)
+
+    n_lines_total = len(sme.linelist)
+    arr_cdepth = np.zeros(n_lines_total, dtype=np.float32)
+    arr_lrs    = np.full(n_lines_total, np.nan, dtype=np.float32)
+    arr_lre    = np.full(n_lines_total, np.nan, dtype=np.float32)
+
+    arr_cdepth[iloc] = data[:, 1]
+    arr_lrs[iloc]    = data[:, 2]
+    arr_lre[iloc]    = data[:, 3]
+
+    sme.linelist._lines['central_depth'] = arr_cdepth
+    sme.linelist._lines['line_range_s']  = arr_lrs
+    sme.linelist._lines['line_range_e']  = arr_lre

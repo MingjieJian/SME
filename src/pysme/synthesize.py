@@ -916,7 +916,7 @@ class Synthesizer:
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    def update_cdr(self, sme, cdr_databse=None, cdr_create=False, cdr_grid_overwrite=False, mode='interp'):
+    def update_cdr(self, sme, cdr_databse=None, cdr_create=False, cdr_grid_overwrite=False, mode='linear', dims=['teff', 'logg', 'vmic']):
         '''
         Update or get the central depth and wavelength range of a line list. This version separate the parallel and non-parallel mode completely.
         Author: Mingjie Jian
@@ -935,7 +935,7 @@ class Synthesizer:
             raise ValueError
         
         if cdr_databse is not None:
-            self._interpolate_or_compute_and_update_linelist(sme, cdr_databse, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite, mode=mode)
+            self._interpolate_or_compute_and_update_linelist(sme, cdr_databse, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite, mode=mode, dims=dims)
             return sme  # 提前结束
 
         logger.info('Using calculation to update central depth and line range.')
@@ -994,7 +994,7 @@ class Synthesizer:
         sme.linelist._lines.loc[indices, 'line_range_e'] = sme.linelist._lines.loc[indices, 'wlcent']+0.5
 
         # Write the stellar parameters used here to the line list
-        sme.linelist.cdepth_range_paras = [sme.teff, sme.logg, sme.monh, sme.vmic]
+        sme.linelist.cdepth_range_paras = np.array([sme.teff, sme.logg, sme.monh, sme.vmic])
 
         self.update_cdr_switch = False
 
@@ -1003,32 +1003,48 @@ class Synthesizer:
     def _interpolate_or_compute_and_update_linelist(
         self, sme, cdr_database, cdepth_decimals=3, cdepth_thres=0.0001,
         range_decimals=2, cdr_create=False, cdr_grid_overwrite=False,
-        mode='interp'
+        mode='linear', dims=['teff', 'logg', 'monh']
     ):
         teff, logg, monh, vmic = sme.teff, sme.logg, sme.monh, sme.vmic
         param = np.array([teff, logg, monh, vmic])
 
         param_grid, fname_map = _load_all_grid_points(cdr_database)
 
+        if len(dims) == 3:
+            # Remove vmic in the grid
+            # vmic_mask = np.isclose(param_grid[:, -1], fixed_vmic)
+            param_grid = param_grid[:, :-1]
+
+            fname_map = {
+                k[:-1]: v for k, v in fname_map.items()
+            }
+            param = param[:-1]
+
         if len(param_grid) > 0:
 
             thres = sme.linelist.cdepth_range_paras_thres
+            
             lower = np.array([teff - thres['teff'], logg - thres['logg'], monh - thres['monh'], vmic - thres['vmic']])
             upper = np.array([teff + thres['teff'], logg + thres['logg'], monh + thres['monh'], vmic + thres['vmic']])
+
+            if len(dims) == 3:
+                lower = lower[:-1]
+                upper = upper[:-1]
+
             in_box_mask = np.all((param_grid >= lower) & (param_grid <= upper), axis=1)
             filtered_grid = param_grid[in_box_mask]
 
-            if mode == 'interp' and len(filtered_grid) >= 5 and not cdr_create:
+            if mode == 'linear' and len(filtered_grid) >= len(dims)+1 and not cdr_create:
                 delaunay = Delaunay(filtered_grid)
                 simplex_index = delaunay.find_simplex(param)
                 if simplex_index >= 0:
-                    logger.info('[CDF] Using 4D interpolation from grid database.')
+                    logger.info('[CDF] Using linear interpolation from grid database.')
                     vertex_indices = delaunay.simplices[simplex_index]
                     vertices = filtered_grid[vertex_indices]
 
                     n_lines_total = len(sme.linelist)
                     interpolated_arrays = {
-                        'central_depth': np.zeros(n_lines_total, dtype=np.float32),
+                        'central_depth': np.zeros(n_lines_total, dtype=np.float32) + 0.0001,
                         'line_range_s':  np.full(n_lines_total, np.nan, dtype=np.float32),
                         'line_range_e':  np.full(n_lines_total, np.nan, dtype=np.float32),
                     }
@@ -1045,19 +1061,25 @@ class Synthesizer:
                         arr_lrs[iloc]    = data[:, 2]
                         arr_lre[iloc]    = data[:, 3]
 
-                        vertex_arrays['central_depth'].append(arr_cdepth)
+                        vertex_arrays['central_depth'].append(np.log10(arr_cdepth))
                         vertex_arrays['line_range_s'].append(arr_lrs)
                         vertex_arrays['line_range_e'].append(arr_lre)
 
+                    # Do a rough normalization
+                    vertices[:, 0] /= 1000
+                    param[0] /= 1000
                     for key in interpolated_arrays:
                         stacked = np.stack(vertex_arrays[key], axis=0)
                         interp  = LinearNDInterpolator(vertices, stacked)
                         interpolated_arrays[key] = interp(param)[0]
 
-                    sme.linelist._lines['central_depth'] = interpolated_arrays['central_depth']
+                    sme.linelist._lines['central_depth'] = 10 ** interpolated_arrays['central_depth']
                     sme.linelist._lines['line_range_s']  = interpolated_arrays['line_range_s']
                     sme.linelist._lines['line_range_e']  = interpolated_arrays['line_range_e']
-                    sme.linelist.cdepth_range_paras = [teff, logg, monh, vmic]
+                    if len(dims) == 4:
+                        sme.linelist.cdepth_range_paras = np.array([teff, logg, monh, vmic])
+                    elif len(dims) == 3:
+                        sme.linelist.cdepth_range_paras = np.array([teff, logg, monh])
                     return
 
             elif mode == 'nearest' and len(filtered_grid) > 0 and not cdr_create:
@@ -1082,7 +1104,8 @@ class Synthesizer:
                 sme.linelist._lines['central_depth'] = arr_cdepth
                 sme.linelist._lines['line_range_s']  = arr_lrs
                 sme.linelist._lines['line_range_e']  = arr_lre
-                sme.linelist.cdepth_range_paras = [teff, logg, monh, vmic]
+                sme.linelist.cdepth_range_paras = nearest_pt
+                    
                 return
 
         # ---------- fallback: compute and save ----------
