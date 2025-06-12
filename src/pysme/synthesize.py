@@ -990,8 +990,8 @@ class Synthesizer:
 
         # Manually change the 2000 line_range to 0.01.
         indices = np.abs(sme.linelist['line_range_e'] - sme.linelist['line_range_s']-2000) < 0.5
-        sme.linelist._lines.loc[indices, 'line_range_s'] = sme.linelist._lines.loc[indices, 'wlcent']-0.5
-        sme.linelist._lines.loc[indices, 'line_range_e'] = sme.linelist._lines.loc[indices, 'wlcent']+0.5
+        sme.linelist._lines.loc[indices, 'line_range_s'] = sme.linelist._lines.loc[indices, 'wlcent']-0.3
+        sme.linelist._lines.loc[indices, 'line_range_e'] = sme.linelist._lines.loc[indices, 'wlcent']+0.3
 
         # Write the stellar parameters used here to the line list
         sme.linelist.cdepth_range_paras = np.array([sme.teff, sme.logg, sme.monh, sme.vmic])
@@ -1001,7 +1001,7 @@ class Synthesizer:
         return sme
 
     def _interpolate_or_compute_and_update_linelist(
-        self, sme, cdr_database, cdepth_decimals=3, cdepth_thres=0.0001,
+        self, sme, cdr_database, cdepth_decimals=4, cdepth_thres=0.0001,
         range_decimals=2, cdr_create=False, cdr_grid_overwrite=False,
         mode='linear', dims=['teff', 'logg', 'monh']
     ):
@@ -1045,8 +1045,8 @@ class Synthesizer:
                     n_lines_total = len(sme.linelist)
                     interpolated_arrays = {
                         'central_depth': np.zeros(n_lines_total, dtype=np.float32) + 0.0001,
-                        'line_range_s':  np.full(n_lines_total, np.nan, dtype=np.float32),
-                        'line_range_e':  np.full(n_lines_total, np.nan, dtype=np.float32),
+                        'line_range_s':  sme.linelist['wlcent'] - 0.3,
+                        'line_range_e':  sme.linelist['wlcent'] + 0.3,
                     }
                     vertex_arrays = {k: [] for k in interpolated_arrays}
                     for pt in vertices:

@@ -537,9 +537,10 @@ def load_cdr_to_linelist(sme, filepath):
     iloc = data[:, 0].astype(int)
 
     n_lines_total = len(sme.linelist)
-    arr_cdepth = np.zeros(n_lines_total, dtype=np.float32)
-    arr_lrs    = np.full(n_lines_total, np.nan, dtype=np.float32)
-    arr_lre    = np.full(n_lines_total, np.nan, dtype=np.float32)
+
+    arr_cdepth = np.zeros(n_lines_total, dtype=np.float32) + 0.0001
+    arr_lrs =  sme.linelist['wlcent'] - 0.3
+    arr_lre =  sme.linelist['wlcent'] + 0.3
 
     arr_cdepth[iloc] = data[:, 1]
     arr_lrs[iloc]    = data[:, 2]
