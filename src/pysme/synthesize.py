@@ -807,6 +807,7 @@ class Synthesizer:
 
         # Only calculate line opacities in the first segment
         #   Calculate spectral synthesis for each
+        logger.info(keep_line_opacity and not sme.first_segment)
         _, wint, sint, cint = dll.Transf(
             sme.mu,
             accrt=sme.accrt,  # threshold line opacity / cont opacity
@@ -876,7 +877,7 @@ class Synthesizer:
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    def update_cdf(self, sme):
+    def update_cdr(self, sme, cdr_databse=None, cdr_create=False, cdr_grid_overwrite=False):
         '''
         Update or get the central depth and wavelength range of a line list.
         Author: Mingjie Jian
