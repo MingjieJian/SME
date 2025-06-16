@@ -236,7 +236,7 @@ The last three columns are the central depth, start and end wavelength of line r
 The function calculated these parameters for each line in a batch of 2000 lines (`sme.cdr_N_line_chunk`), in parallel (`sme.cdr_parallel`) of 10 (`sme.cdr_n_jobs`) jobs. 
 These vairalbes can be modified to change the behaviour of the function.
 
-The variable `sme.linelist.cdepth_range_paras` will also be updated to an array of [Teff, logg, monh, vmic] used for running `update_cdr`.
+The variable `sme.linelist.cdr_paras` will also be updated to an array of [Teff, logg, monh, vmic] used for running `update_cdr`.
 
 ## How to synthesize a long spectra
 
@@ -261,7 +261,7 @@ sme = synthesize_spectrum(sme, linelist_mode='auto')
 
 The detailed explanaiton of what `linelist_mode='auto'` triggers is as follow:
 
-1. If the `sme.linelist.cdepth_range_paras` is None (means `update_cdr` hasn't run for it), or either the Teff, logg, monh and vmic (optional) in `sme.linelist.cdepth_range_paras` differ from the input parameters by 250K, 0.5, 0.5 or 1 (you can change these parameter in `sme.linelist.cdepth_range_paras_thres` as a dictionary), then run `update_cdr` under current input stellar parameters.
+1. If the `sme.linelist.cdr_paras` is None (means `update_cdr` hasn't run for it), or either the Teff, logg, monh and vmic (optional) in `sme.linelist.cdr_paras` differ from the input parameters by 250K, 0.5, 0.5 or 1 (you can change these parameter in `sme.linelist.cdr_paras_thres` as a dictionary), then run `update_cdr` under current input stellar parameters.
 2. Find the beginning and ending wavelength of each segment, wbeg and wend. 
 3. For each segment, only input the lines with:
     - `central_depth` > sme.cdr_depth_thres (default 0), and 
