@@ -847,6 +847,7 @@ class Synthesizer:
 
         # Only calculate line opacities in the first segment
         #   Calculate spectral synthesis for each
+        logger.info(keep_line_opacity and not sme.first_segment)
         _, wint, sint, cint = dll.Transf(
             sme.mu,
             accrt=sme.accrt,  # threshold line opacity / cont opacity

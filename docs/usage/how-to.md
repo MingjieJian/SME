@@ -261,7 +261,7 @@ sme = synthesize_spectrum(sme, linelist_mode='auto')
 
 The detailed explanaiton of what `linelist_mode='auto'` triggers is as follow:
 
-1. If the `sme.linelist.cdepth_range_paras` is None (means `update_cdr` hasn't run for it), or either the Teff, logg, monh and vmic in `sme.linelist.cdepth_range_paras` differ from the input parameters by 250K, 0.5, 0.5 or 1 (you can change these parameter in `sme.linelist.cdepth_range_paras_thres` as a dictionary), then run `update_cdr` under current input stellar parameters.
+1. If the `sme.linelist.cdepth_range_paras` is None (means `update_cdr` hasn't run for it), or either the Teff, logg, monh and vmic (optional) in `sme.linelist.cdepth_range_paras` differ from the input parameters by 250K, 0.5, 0.5 or 1 (you can change these parameter in `sme.linelist.cdepth_range_paras_thres` as a dictionary), then run `update_cdr` under current input stellar parameters.
 2. Find the beginning and ending wavelength of each segment, wbeg and wend. 
 3. For each segment, only input the lines with:
     - `central_depth` > sme.cdr_depth_thres (default 0), and 
