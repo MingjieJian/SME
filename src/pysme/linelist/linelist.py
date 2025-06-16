@@ -219,8 +219,8 @@ class LineList(IPersist):
         self.lineformat = lineformat
         #:pandas.DataFrame: DataFrame that contains all the data
         self._lines = linedata  # should have all the fields (20)
-        self.cdepth_range_paras = None
-        self.cdepth_range_paras_thres = {'teff':250, 'logg':0.5, 'monh':0.5, 'vmic':1}
+        self.cdr_paras = None
+        self.cdr_paras_thres = {'teff':250, 'logg':0.5, 'monh':0.5, 'vmic':1}
         if medium in ["air", "vac", None]:
             self._medium = medium
         else:
@@ -254,7 +254,7 @@ class LineList(IPersist):
                     lineformat=self.lineformat,
                     medium=self.medium,
                 )
-                return_list.cdepth_range_paras = self.cdepth_range_paras
+                return_list.cdr_paras = self.cdr_paras
                 return return_list
             values = self._lines[index].values
             if index in self.string_columns:
@@ -267,7 +267,7 @@ class LineList(IPersist):
             return_list =  LineList(
                 self._lines.iloc[index], self.lineformat, medium=self.medium
             )
-            return_list.cdepth_range_paras = self.cdepth_range_paras
+            return_list.cdr_paras = self.cdr_paras
             return return_list
 
     def __getattribute__(self, name):
