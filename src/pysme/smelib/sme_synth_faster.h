@@ -66,3 +66,4 @@ extern "C" const char *SME_DLL Transf(int n, void *arg[]);                     /
 extern "C" const char *SME_DLL CentralDepth(int n, void *arg[]);               /* Computes line central depths */
 extern "C" const char *SME_DLL GetLineOpacity(int n, void *arg[]);             /* Returns specific line opacity */
 extern "C" const char *SME_DLL GetLineRange(int n, void *arg[]);               /* Get validity range for every line */
+extern "C" const char *SME_DLL Contribution_functions(int n, void *arg[]);     /* Get contribution functions */

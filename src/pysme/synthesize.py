@@ -79,7 +79,7 @@ class Synthesizer:
         self.atmosphere_interpolator = None
         # This stores a reference to the currently used sme structure, so we only log it once
         self.known_sme = None
-        self.update_cdf_switch = False
+        self.update_cdr_switch = False
         logger.info("Don't forget to cite your sources. Use sme.citation()")
 
     def get_atmosphere(self, sme):
@@ -615,7 +615,7 @@ class Synthesizer:
             logger.info(f'linelist mode: {linelist_mode}')
             if sme.linelist.cdepth_range_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= sme.linelist.cdepth_range_paras_thres['teff'] or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= sme.linelist.cdepth_range_paras_thres['logg']) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= sme.linelist.cdepth_range_paras_thres['monh']) or cdr_create:
                 logger.info(f'Updating linelist central depth and line range.')
-                sme = self.update_cdf(sme, cdr_databse=cdr_databse, cdr_create=cdr_create)
+                sme = self.update_cdr(sme, cdr_databse=cdr_databse, cdr_create=cdr_create)
 
         # Input Model data to C library
         dll.SetLibraryPath()
@@ -719,7 +719,7 @@ class Synthesizer:
                 # sme.central_depth[s] = central_depth[s]
                 # sme.line_range[s] = line_range[s]
 
-            if passLineList and self.update_cdf_switch:
+            if passLineList and self.update_cdr_switch:
                 s = 0
                 if len(central_depth[s] > 0):
                     sme.linelist._lines.loc[~sme.line_ion_mask, 'central_depth'] = central_depth[s]
@@ -845,6 +845,7 @@ class Synthesizer:
 
         # Only calculate line opacities in the first segment
         #   Calculate spectral synthesis for each
+        logger.info(keep_line_opacity and not sme.first_segment)
         _, wint, sint, cint = dll.Transf(
             sme.mu,
             accrt=sme.accrt,  # threshold line opacity / cont opacity
@@ -914,14 +915,14 @@ class Synthesizer:
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    def update_cdf(self, sme, cdr_databse=None, cdr_create=False, cdr_grid_overwrite=False):
+    def update_cdr(self, sme, cdr_databse=None, cdr_create=False, cdr_grid_overwrite=False):
         '''
         Update or get the central depth and wavelength range of a line list. This version separate the parallel and non-parallel mode completely.
         Author: Mingjie Jian
         '''
 
         N_line_chunk, parallel, n_jobs, pysme_out = sme.cdr_N_line_chunk, sme.cdr_parallel, sme.cdr_n_jobs, sme.cdr_pysme_out
-        self.update_cdf_switch = True
+        self.update_cdr_switch = True
 
         # Decide how many chunks to be divided
         N_chunk = int(np.ceil(len(sme.linelist) / N_line_chunk))
@@ -934,7 +935,7 @@ class Synthesizer:
         
         if cdr_databse is not None:
             self._interpolate_or_compute_and_update_linelist(sme, cdr_databse, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite)
-            return sme  # 提前结束
+            return sme
 
         logger.info('Using calculation to update central depth and line range.')
         sub_sme_init = SME_Structure()
@@ -994,7 +995,7 @@ class Synthesizer:
         # Write the stellar parameters used here to the line list
         sme.linelist.cdepth_range_paras = [sme.teff, sme.logg, sme.monh, sme.vmic]
 
-        self.update_cdf_switch = False
+        self.update_cdr_switch = False
 
         return sme
 
@@ -1007,7 +1008,7 @@ class Synthesizer:
             delaunay = Delaunay(param_grid)
             simplex_index = delaunay.find_simplex(param)
             if simplex_index >= 0:
-                logger.info('Using CDF database to update central depth and line range.')
+                logger.info('Using CDR database to update central depth and line range.')
                 vertex_indices = delaunay.simplices[simplex_index]
                 vertices = param_grid[vertex_indices]
 
@@ -1055,8 +1056,8 @@ class Synthesizer:
         if os.path.exists(os.path.join(cdr_database, fname)) and not cdr_grid_overwrite:
             logger.info(f"{fname} exists and cdr_grid_overwrite is false, skipping generating cdr grid.")
         else:
-            # 不在已有 tetra 中，继续执行原始 update_cdf 逻辑并保存
-            self.update_cdf(sme, cdr_databse=None)
+            # 不在已有 tetra 中，继续执行原始 update_cdr 逻辑并保存
+            self.update_cdr(sme, cdr_databse=None)
 
             mask = sme.linelist['central_depth'] >= cdepth_thres
             filtered_df = sme.linelist[['central_depth', 'line_range_s', 'line_range_e']][mask]
