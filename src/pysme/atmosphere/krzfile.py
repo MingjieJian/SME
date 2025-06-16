@@ -48,12 +48,6 @@ class KrzFile(Atmosphere):
         filename : str
             name of the file to load
         """
-        # TODO: this only works for some krz files
-        # 1..2 lines header
-        # 3 line opacity
-        # 4..13 elemntal abundances
-        # 14.. Table data for each layer
-        #    Rhox Temp XNE XNA RHO
 
         kB, mH = 1.380649e-16, 1.6735575e-24
         
@@ -76,6 +70,11 @@ class KrzFile(Atmosphere):
             for _ in range(int(temp[2])):
                 model_lines.append(file.readline().split())
             model_lines = np.array(model_lines, dtype=np.float64)
+
+        try:
+            self.monh = float(re.findall(r"\[\s*([+-]?\d+(?:\.\d*)?)\s*\]", header)[0])
+        except IndexError:
+            self.monh = 0.0
 
         try:
             self.vturb = float(re.findall(r"VTURB=?\s*(\d)", header, flags=re.I)[0])
@@ -108,7 +107,7 @@ class KrzFile(Atmosphere):
 
         # parse abundance
         pattern = abun[:, 1]
-        self.abund = Abund(monh=0, pattern=pattern, type="sme")
+        self.abund = Abund(monh=self.monh, pattern=pattern, type="sme")
 
         # parse table
         self.table = model_lines
@@ -117,7 +116,7 @@ class KrzFile(Atmosphere):
         self.xne = self.table[:, 3]
         self.P_gas = self.table[:, 2]
         self.xna = self.P_gas / (kB * self.temp)
-        atmoic_mu = get_mu_from_abund(self.abund.pattern)
+        atmoic_mu = self.get_mu_from_abund()
         self.rho = self.P_gas * atmoic_mu * mH / (kB * self.temp)
 
         # This is not used since it is tau_ross instead of tau_5000
@@ -125,8 +124,8 @@ class KrzFile(Atmosphere):
         # self.tau    = np.zeros_like(self.rhox)
         # self.tau[1:] = np.cumsum(0.5 * (self.abross[1:] + self.abross[:-1]) * np.diff(self.rhox))
 
-    def get_mu_from_abund(abun):
-        
+    def get_mu_from_abund(self):
+        abun = self.abund.pattern
         X, Y = abun['H'], abun['He']
         # 1. 预处理金属
         metals = {el: 10.0**val for el, val in abun.items() if el not in ('H', 'He')}

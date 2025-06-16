@@ -615,7 +615,7 @@ class Synthesizer:
         # Calculate the line central depth and line range if necessary
         if linelist_mode == 'auto':
             logger.info(f'linelist mode: {linelist_mode}')
-            if sme.linelist.cdepth_range_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= sme.linelist.cdepth_range_paras_thres['teff'] or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= sme.linelist.cdepth_range_paras_thres['logg']) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= sme.linelist.cdepth_range_paras_thres['monh']) or cdr_create:
+            if sme.linelist.cdr_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdr_paras[0]-sme.teff) >= sme.linelist.cdr_paras_thres['teff'] or (np.abs(sme.linelist.cdr_paras[1]-sme.logg) >= sme.linelist.cdr_paras_thres['logg']) or (np.abs(sme.linelist.cdr_paras[2]-sme.monh) >= sme.linelist.cdr_paras_thres['monh']) or cdr_create:
                 logger.info(f'Updating linelist central depth and line range.')
                 sme = self.update_cdr(sme, cdr_databse=cdr_databse, cdr_create=cdr_create)
 
@@ -810,8 +810,8 @@ class Synthesizer:
             #     sme.line_ion_mask = line_ion_mask
             # elif linelist_mode == 'auto':
             #     # Check if the current stellar parameters are within the range of that in the linelist
-            #     if np.abs(sme.linelist.cdepth_range_paras[0]-sme.teff) >= 500 or (np.abs(sme.linelist.cdepth_range_paras[1]-sme.logg) >= 1) or (np.abs(sme.linelist.cdepth_range_paras[2]-sme.monh) >= 0.5): 
-            #         logger.warning(f'The current stellar parameters are out of the range (+-500K, +- 1 or +-0.5) of that used to calculate the central depth and ranges of the linelist. \n Current stellar parameters: Teff: {sme.teff}, logg: {sme.logg}, monh: {sme.monh}. Linelist parameters: Teff: {sme.linelist.cdepth_range_paras[0]}, logg: {sme.linelist.cdepth_range_paras[1]}, monh: {sme.linelist.cdepth_range_paras[2]}.')
+            #     if np.abs(sme.linelist.cdr_paras[0]-sme.teff) >= 500 or (np.abs(sme.linelist.cdr_paras[1]-sme.logg) >= 1) or (np.abs(sme.linelist.cdr_paras[2]-sme.monh) >= 0.5): 
+            #         logger.warning(f'The current stellar parameters are out of the range (+-500K, +- 1 or +-0.5) of that used to calculate the central depth and ranges of the linelist. \n Current stellar parameters: Teff: {sme.teff}, logg: {sme.logg}, monh: {sme.monh}. Linelist parameters: Teff: {sme.linelist.cdr_paras[0]}, logg: {sme.linelist.cdr_paras[1]}, monh: {sme.linelist.cdr_paras[2]}.')
                 
             #     v_broad = np.sqrt(sme.vmic**2 + sme.vmac**2 + sme.vsini**2)
             #     del_wav = v_broad * sme.linelist['wlcent'] / clight
@@ -995,7 +995,7 @@ class Synthesizer:
         sme.linelist._lines.loc[indices, 'line_range_e'] = sme.linelist._lines.loc[indices, 'wlcent']+0.3
 
         # Write the stellar parameters used here to the line list
-        sme.linelist.cdepth_range_paras = np.array([sme.teff, sme.logg, sme.monh, sme.vmic])
+        sme.linelist.cdr_paras = np.array([sme.teff, sme.logg, sme.monh, sme.vmic])
 
         self.update_cdr_switch = False
 
@@ -1023,7 +1023,7 @@ class Synthesizer:
 
         if len(param_grid) > 0:
 
-            thres = sme.linelist.cdepth_range_paras_thres
+            thres = sme.linelist.cdr_paras_thres
             
             lower = np.array([teff - thres['teff'], logg - thres['logg'], monh - thres['monh'], vmic - thres['vmic']])
             upper = np.array([teff + thres['teff'], logg + thres['logg'], monh + thres['monh'], vmic + thres['vmic']])
@@ -1078,9 +1078,9 @@ class Synthesizer:
                     sme.linelist._lines['line_range_s']  = interpolated_arrays['line_range_s']
                     sme.linelist._lines['line_range_e']  = interpolated_arrays['line_range_e']
                     if len(dims) == 4:
-                        sme.linelist.cdepth_range_paras = np.array([teff, logg, monh, vmic])
+                        sme.linelist.cdr_paras = np.array([teff, logg, monh, vmic])
                     elif len(dims) == 3:
-                        sme.linelist.cdepth_range_paras = np.array([teff, logg, monh])
+                        sme.linelist.cdr_paras = np.array([teff, logg, monh])
                     return
 
             elif mode == 'nearest' and len(filtered_grid) > 0 and not cdr_create:
@@ -1105,7 +1105,7 @@ class Synthesizer:
                 sme.linelist._lines['central_depth'] = arr_cdepth
                 sme.linelist._lines['line_range_s']  = arr_lrs
                 sme.linelist._lines['line_range_e']  = arr_lre
-                sme.linelist.cdepth_range_paras = nearest_pt
+                sme.linelist.cdr_paras = nearest_pt
                     
                 return
 
