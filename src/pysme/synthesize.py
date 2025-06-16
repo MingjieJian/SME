@@ -527,7 +527,7 @@ class Synthesizer:
         dll_id=None,
         linelist_mode='all',
         get_opacity=False,
-        cdr_databse=None,
+        cdr_database=None,
         cdr_create=False,
         keep_line_opacity=False,
         vbroad_expend_ratio=2
@@ -617,7 +617,7 @@ class Synthesizer:
             logger.info(f'linelist mode: {linelist_mode}')
             if sme.linelist.cdr_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdr_paras[0]-sme.teff) >= sme.linelist.cdr_paras_thres['teff'] or (np.abs(sme.linelist.cdr_paras[1]-sme.logg) >= sme.linelist.cdr_paras_thres['logg']) or (np.abs(sme.linelist.cdr_paras[2]-sme.monh) >= sme.linelist.cdr_paras_thres['monh']) or cdr_create:
                 logger.info(f'Updating linelist central depth and line range.')
-                sme = self.update_cdr(sme, cdr_databse=cdr_databse, cdr_create=cdr_create)
+                sme = self.update_cdr(sme, cdr_database=cdr_database, cdr_create=cdr_create)
 
         # Input Model data to C library
         dll.SetLibraryPath()
@@ -917,7 +917,7 @@ class Synthesizer:
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    def update_cdr(self, sme, cdr_databse=None, cdr_create=False, cdr_grid_overwrite=False, mode='linear', dims=['teff', 'logg', 'vmic']):
+    def update_cdr(self, sme, cdr_database=None, cdr_create=False, cdr_grid_overwrite=False, mode='linear', dims=['teff', 'logg', 'vmic']):
         '''
         Update or get the central depth and wavelength range of a line list. This version separate the parallel and non-parallel mode completely.
         Author: Mingjie Jian
@@ -935,8 +935,8 @@ class Synthesizer:
         if sum(len(item) for item in sub_linelist) != len(sme.linelist):
             raise ValueError
         
-        if cdr_databse is not None:
-            self._interpolate_or_compute_and_update_linelist(sme, cdr_databse, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite, mode=mode, dims=dims)
+        if cdr_database is not None:
+            self._interpolate_or_compute_and_update_linelist(sme, cdr_database, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite, mode=mode, dims=dims)
             return sme  # 提前结束
 
         logger.info('Using calculation to update central depth and line range.')
@@ -1116,7 +1116,7 @@ class Synthesizer:
             logger.info(f"{fname} exists and cdr_grid_overwrite is false, skipping generating cdr grid.")
         else:
             logger.info("[CDF] Fallback: recomputing line properties.")
-            self.update_cdr(sme, cdr_databse=None)
+            self.update_cdr(sme, cdr_database=None)
 
             mask = sme.linelist['central_depth'] >= cdepth_thres
             filtered_df = sme.linelist[['central_depth', 'line_range_s', 'line_range_e']][mask]
