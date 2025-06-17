@@ -530,7 +530,8 @@ class Synthesizer:
         cdr_database=None,
         cdr_create=False,
         keep_line_opacity=False,
-        vbroad_expend_ratio=2
+        vbroad_expend_ratio=2,
+        contribution_function=False
     ):
         """
         Calculate the synthetic spectrum based on the parameters passed in the SME structure
@@ -604,6 +605,8 @@ class Synthesizer:
         central_depth = [[] for _ in range(n_segments)]
         line_range = [[] for _ in range(n_segments)]
         opacity = [[] for _ in range(n_segments)]
+        if contribution_function:
+            sme.contribution_function = [[] for _ in range(n_segments)]
         sme.linelist._lines['nlte_flag'] = np.nan
 
         # If wavelengths are already defined use those as output
@@ -659,7 +662,8 @@ class Synthesizer:
                 reuse_wavelength_grid,
                 dll_id=dll_id,
                 get_opacity=get_opacity,
-                keep_line_opacity=keep_line_opacity
+                keep_line_opacity=keep_line_opacity,
+                contribution_function=contribution_function
             )
         for il in segments:
             if "wave" not in sme or len(sme.wave[il]) == 0:
@@ -769,7 +773,8 @@ class Synthesizer:
         reuse_wavelength_grid=False,
         keep_line_opacity=False,
         dll_id=None,
-        get_opacity=False
+        get_opacity=False,
+        contribution_function=False
     ):
         """Create the synthetic spectrum of a single segment
 
@@ -914,6 +919,10 @@ class Synthesizer:
                 opacity.append(dll.GetLineOpacity(wave_single))
         else:
             opacity = None
+
+        if contribution_function:
+            sme.contribution_function[segment] = dll.GetContributionfunction(sme.mu, sme.wave[segment])
+
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     

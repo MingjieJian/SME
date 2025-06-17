@@ -1263,11 +1263,12 @@ static PyObject *smelib_GetNLTEflags(PyObject *self, PyObject *args)
     return (PyObject *)arr;
 }
 
-static char smelib_Contributionfunctions_docstring[] = "Compute contribution functions.";
-static PyObject *smelib_Contributionfunctions(PyObject *self, PyObject *args)
+static char smelib_ContributionFunctions_docstring[] = "Compute contribution functions.";
+static PyObject *smelib_ContributionFunctions(PyObject *self, PyObject *args, PyObject *kwds)
 {
     /* parse Python arguments here — same signature SME expects:
        int n_mu, double *mu, int nw_avail, double acc_rt, etc. */
+    
     const int n = 8;
     void *args_c[n];
     const char *result = NULL;
@@ -1275,25 +1276,28 @@ static PyObject *smelib_Contributionfunctions(PyObject *self, PyObject *args)
     /* allocate NumPy arrays for the output */
     short nmu, keep_lineop = 1, long_continuum = 1;
     double accrt = 1e-4, accwi = 3e-3;
-    int nw = 0
+    int nw = 0, nrhox = GetNRHOX(), nwmax = 40000;
 
-    nmu = PyArray_DIM(mu_arr, 0);
-    nwsize = GetNLINES();
+    // npy_intp dims[1], dims2[2], dims3[3];
+    npy_intp dims3[3];
 
     PyObject *mu_obj = NULL, *wave_obj = NULL;
-    PyArrayObject *mu_arr = NULL
-    PyArrayObject *wave_arr = NULL
+    PyArrayObject *mu_arr = NULL;
+    PyArrayObject *wave_arr = NULL;
     PyArrayObject *table_arr = NULL, *ctable_arr = NULL;
+    PyObject *ret_tuple = NULL;
 
     static const char *keywords[] = {"mu", "wave", "nwmax", "accrt", "accwi", "keep_lineop", "long_continuum", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|Oiddhh", const_cast<char **>(keywords),
                                      &mu_obj, &wave_obj, &nwmax, &accrt, &accwi, &keep_lineop, &long_continuum))
         return NULL;
-
+    
     mu_arr = (PyArrayObject *)PyArray_FROM_OTF(mu_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
     if (mu_arr == NULL)
         goto fail;
 
+    nmu = PyArray_DIM(mu_arr, 0);
+    
     if (PyArray_NDIM(mu_arr) != 1)
     {
         PyErr_SetString(PyExc_ValueError, "Expected mu array of ndim == 1");
@@ -1318,16 +1322,24 @@ static PyObject *smelib_Contributionfunctions(PyObject *self, PyObject *args)
     }
     else
     {
-        // Create a new wavelength grid
-        nw = 0;
-        dims[0] = nwmax;
-        wave_arr = (PyArrayObject *)PyArray_SimpleNew(1, dims, NPY_DOUBLE);
+        goto fail;
+        // // Create a new wavelength grid
+        // nw = 0;
+        // dims[0] = nwmax;
+        // wave_arr = (PyArrayObject *)PyArray_SimpleNew(1, dims, NPY_DOUBLE);
     }
 
-    /* fill args_c[] exactly like other wrappers */
+    // dims2[0] = nw;
+    // dims2[1] = nrhox;
+    dims3[0] = nwmax;
+    dims3[1] = nmu;
+    dims3[2] = nrhox;
+    table_arr = (PyArrayObject *)PyArray_SimpleNew(3, dims3, NPY_DOUBLE);
+    ctable_arr = (PyArrayObject *)PyArray_SimpleNew(3, dims3, NPY_DOUBLE);
+
     args_c[0] = &nmu;
     args_c[1] = PyArray_DATA(mu_arr);
-    args_c[2] = &nwsize;
+    args_c[2] = &nw;
     args_c[3] = &nw;
     args_c[4] = PyArray_DATA(wave_arr);
     args_c[5] = PyArray_DATA(table_arr);
@@ -1340,8 +1352,14 @@ static PyObject *smelib_Contributionfunctions(PyObject *self, PyObject *args)
         PyErr_SetString(PyExc_RuntimeError, result);
         goto fail;
     }
-    return Py_BuildValue("NN", table_arr, ctable_arr);;
+    ret_tuple = PyTuple_New(2);
+    PyTuple_SET_ITEM(ret_tuple, 0, (PyObject *)table_arr);
+    PyTuple_SET_ITEM(ret_tuple, 1, (PyObject *)ctable_arr);
+    return ret_tuple;
     /* return the NumPy arrays in a tuple */
+fail:
+return NULL;
+
 }
 
 static PyMethodDef module_methods[] = {
@@ -1372,7 +1390,7 @@ static PyMethodDef module_methods[] = {
     {"GetLineOpacity", smelib_GetLineOpacity, METH_VARARGS, smelib_GetLineOpacity_docstring},
     {"GetLineRange", smelib_GetLineRange, METH_NOARGS, smelib_GetLineRange_docstring},
     {"GetNLTEflags", smelib_GetNLTEflags, METH_NOARGS, smelib_GetNLTEflags_docstring},
-    {"ContributionFunctions", smelib_ContributionFunctions, METH_VARARGS | METH_KEYWORDS, smelib_ContributionFunctions_docstring},
+    {"ContributionFunctions", (PyCFunction)smelib_ContributionFunctions, METH_VARARGS | METH_KEYWORDS, smelib_ContributionFunctions_docstring},
     {NULL, NULL, 0, NULL}};
 
 PyMODINIT_FUNC PyInit__smelib(void)
