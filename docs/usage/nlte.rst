@@ -18,6 +18,10 @@ Similarly they can be disabled for each element using
 If no element is set to NLTE in the structure PySME will perform
 LTE calculations only.
 
+<iframe src="../_static/periodic_table.html"
+        width="%100" height="480"
+        style="border:none;"></iframe>
+
 Furthermore a long format linelist is required for NLTE calculations.
 If only a short format has been given, then the calculations will
 only be in LTE as well. (See :ref:`linelist`)
