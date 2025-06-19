@@ -20,7 +20,7 @@ LTE calculations only.
 
 .. raw:: html
 
-    <iframe src="../_static/periodic_table.html"
+    <iframe src="../_static/nlte_table.html"
             width="100%" height="480"
             style="border:none;"></iframe>
 
