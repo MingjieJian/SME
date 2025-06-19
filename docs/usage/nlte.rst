@@ -19,10 +19,7 @@ If no element is set to NLTE in the structure PySME will perform
 LTE calculations only.
 
 .. raw:: html
-
-    <iframe src="../_static/nlte_table.html"
-            width="100%" height="480"
-            style="border:none;"></iframe>
+    :file: ../_static/nlte_table.html
 
 Furthermore a long format linelist is required for NLTE calculations.
 If only a short format has been given, then the calculations will
