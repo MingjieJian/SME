@@ -22,14 +22,14 @@ sys.path.insert(0, src_dir + "/src")
 
 # -- Project information -----------------------------------------------------
 
-project = "SME"
-copyright = "2025, Jeff Valenti, Nikolai Piskunov, Ansgar Wehrhahn, Mingjie Jian"
-author = "Jeff Valenti, Nikolai Piskunov, Ansgar Wehrhahn, Mingjie Jian"
+project = "PySME"
+copyright = "2025, Jeff Valenti, Nikolai Piskunov, Mingjie Jian, Ansgar Wehrhahn"
+author = "Jeff Valenti, Nikolai Piskunov, Mingjie Jian, Ansgar Wehrhahn"
 
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "0.1.1"
+release = "0.4.198"
 
 
 # -- General configuration ---------------------------------------------------
