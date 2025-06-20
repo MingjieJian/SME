@@ -301,6 +301,7 @@ class SME_Structure(Parameters):
         self.cdr_pysme_out = False
         self.cdr_depth_thres = 0.0
         self.tdnlte_H = False
+        self.tdnlte_H_new = False
 
         self.show_progress_bars = False
 

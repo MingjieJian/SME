@@ -24,7 +24,8 @@ from .iliffe_vector import Iliffe_vector
 from .large_file_storage import setup_lfs
 from .sme import MASK_VALUES
 from .sme_synth import SME_DLL
-from .util import show_progress_bars, interpolate_H_spectrum, H_lineprof, boundary_vertices, safe_interpolation
+from .util import show_progress_bars, interpolate_H_spectrum, H_lineprof, boundary_vertices, safe_interpolation, interpolate_3DNLTEH_spectrum_RBF
+from . import util
 from .sme import SME_Structure
 
 from contextlib import redirect_stdout
@@ -564,6 +565,8 @@ class Synthesizer:
         # Prepare 3D NLTE H profile corrections
         if sme.tdnlte_H:
             sme.tdnlte_H_correction = self.get_H_3dnlte_correction(sme)
+        if sme.tdnlte_H_new:
+            sme.tdnlte_H_correction = self.get_H_3dnlte_correction_rbf(sme)
 
         if sme is not self.known_sme:
             logger.debug("Synthesize spectrum")
@@ -861,6 +864,15 @@ class Synthesizer:
             wave=wint_seg,
         )
 
+        # Insert the new 3DNLTE correction
+        if sme.tdnlte_H_new:
+            interpolator = interp1d(util.lambda_H_3DNLTE, sme.tdnlte_H_correction, kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
+            correction_3dnlte_H_interp = interpolator(wint)
+
+            print(sint.shape)
+            print(correction_3dnlte_H_interp.shape)
+            sint *= correction_3dnlte_H_interp
+
         # # Assign the nlte flags
         # nlte_flags = dll.GetNLTEflags()
         # sme.nlte.flags = nlte_flags
@@ -1139,6 +1151,38 @@ class Synthesizer:
             logger.info(f'Saving {fname} to database.')
             np.savez_compressed(full_path, line_info=line_info)
 
+    def get_H_3dnlte_correction_rbf(self, sme):
+        """
+        Compute the 3D NLTE correction factor for hydrogen lines, using RBF interpolator and in intensities.
+    
+        """
+
+        logger.info(f"Getting H 3dnlte correction using RBF")
+
+        sme_H_only = SME_Structure()
+        sme_H_only.teff, sme_H_only.logg, sme_H_only.monh, sme_H_only.vmic, sme_H_only.vmac, sme_H_only.vsini = sme.teff, sme.logg, sme.monh, sme.vmic, sme.vmac, sme.vsini
+        sme_H_only.iptype = sme.iptype
+        sme_H_only.ipres = sme.ipres
+        sme_H_only.specific_intensities_only = True
+        # sme_H_only.normalize_by_continuum = False
+        for i in range(len(sme.nlte.elements)):
+            sme_H_only.nlte.set_nlte(sme.nlte.elements[i], sme.nlte.grids[sme.nlte.elements[i]])
+        sme_H_only.linelist = sme.linelist[(sme.linelist['species'] == 'H 1')]
+        sme_H_only.wave = np.arange(4000, 6700, 0.02)
+        sme_H_only.tdnlte_H = False
+        sme_H_only_res = self.synthesize_spectrum(sme_H_only)
+
+        int_3dnlte_H = []
+        interpolator = interp1d(sme_H_only_res[0][0], sme_H_only_res[1][0], kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
+        int_1d_H = interpolator(util.lambda_H_3DNLTE)
+        for mu in sme_H_only.mu:
+            int_3dnlte_H.append(interpolate_3DNLTEH_spectrum_RBF(sme_H_only.teff, sme_H_only.logg, sme_H_only.monh, mu))
+            
+        int_3dnlte_H = np.array(int_3dnlte_H)
+        int_1d_H = np.array(int_1d_H)
+        correction = int_3dnlte_H / int_1d_H
+
+        return correction
 
     def get_H_3dnlte_correction(self, sme):
         """
