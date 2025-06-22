@@ -619,90 +619,90 @@ rbf_Hgamma = RBFInterpolator(
             kernel="cubic"
         )
 
-def interpolate_H_spectrum(
-    df: pd.DataFrame,
-    Teff_star: float,
-    logg_star: float,
-    FeH_star: float,
-    boundary_vertices: list,
-    rbf_kernel: str = 'linear',
-    fill_value: float = np.nan,
-):
-    """
-    Interpolates the hydrogen line spectrum (Ic and I) over a grid of stellar parameters
-    (Teff, logg, FeH) using radial basis function (RBF) interpolation, with 
-    boundary control in the Teff-logg space.
+# def interpolate_H_spectrum(
+#     df: pd.DataFrame,
+#     Teff_star: float,
+#     logg_star: float,
+#     FeH_star: float,
+#     boundary_vertices: list,
+#     rbf_kernel: str = 'linear',
+#     fill_value: float = np.nan,
+# ):
+#     """
+#     Interpolates the hydrogen line spectrum (Ic and I) over a grid of stellar parameters
+#     (Teff, logg, FeH) using radial basis function (RBF) interpolation, with 
+#     boundary control in the Teff-logg space.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Hydrogen line profile data with columns:
-        ['Teff', 'logg', 'Fe_H', 'mu', 'wl', 'wmu', 'Ic', 'I'].
-    Teff_star : float
-        Effective temperature to interpolate at.
-    logg_star : float
-        Surface gravity to interpolate at.
-    FeH_star : float
-        Metallicity to interpolate at.
-    boundary_vertices : list of (Teff, logg)
-        Defines interpolation region. Outside this, returns fill_value.
-    rbf_kernel : str
-        Kernel to use for RBFInterpolator.
-    fill_value : float
-        Value to return if point is outside interpolation region.
-    output : str
-        'intensity' returns detailed (mu, wl) values,
-        'flux' returns integrated flux across mu for each wl.
+#     Parameters
+#     ----------
+#     df : pd.DataFrame
+#         Hydrogen line profile data with columns:
+#         ['Teff', 'logg', 'Fe_H', 'mu', 'wl', 'wmu', 'Ic', 'I'].
+#     Teff_star : float
+#         Effective temperature to interpolate at.
+#     logg_star : float
+#         Surface gravity to interpolate at.
+#     FeH_star : float
+#         Metallicity to interpolate at.
+#     boundary_vertices : list of (Teff, logg)
+#         Defines interpolation region. Outside this, returns fill_value.
+#     rbf_kernel : str
+#         Kernel to use for RBFInterpolator.
+#     fill_value : float
+#         Value to return if point is outside interpolation region.
+#     output : str
+#         'intensity' returns detailed (mu, wl) values,
+#         'flux' returns integrated flux across mu for each wl.
 
-    Returns
-    -------
-    pd.DataFrame
-        Interpolated result as either intensity table or flux summary.
-    """
-    result = []
-    point_star_2d = (Teff_star, logg_star)
-    polygon = Path(boundary_vertices)
-    in_boundary = polygon.contains_point(point_star_2d)
-    unique_wl = df['wl'].unique()
+#     Returns
+#     -------
+#     pd.DataFrame
+#         Interpolated result as either intensity table or flux summary.
+#     """
+#     result = []
+#     point_star_2d = (Teff_star, logg_star)
+#     polygon = Path(boundary_vertices)
+#     in_boundary = polygon.contains_point(point_star_2d)
+#     unique_wl = df['wl'].unique()
 
-    for wl in unique_wl:
-        sub_df_wl = df[df['wl'] == wl]
-        sub_results = []
+#     for wl in unique_wl:
+#         sub_df_wl = df[df['wl'] == wl]
+#         sub_results = []
 
-        for mu in sub_df_wl['mu'].unique():
-            sub_df = sub_df_wl[sub_df_wl['mu'] == mu]
-            if sub_df.shape[0] < 4:
-                continue
+#         for mu in sub_df_wl['mu'].unique():
+#             sub_df = sub_df_wl[sub_df_wl['mu'] == mu]
+#             if sub_df.shape[0] < 4:
+#                 continue
 
-            wmu = sub_df['wmu'].iloc[0]
+#             wmu = sub_df['wmu'].iloc[0]
 
-            if not in_boundary:
-                sub_results.append([mu, wmu, fill_value, fill_value])
-                continue
+#             if not in_boundary:
+#                 sub_results.append([mu, wmu, fill_value, fill_value])
+#                 continue
 
-            points = sub_df[['Teff', 'logg', 'Fe_H']].values
-            Ic_vals = sub_df['Ic'].values
-            I_vals = sub_df['I'].values
+#             points = sub_df[['Teff', 'logg', 'Fe_H']].values
+#             Ic_vals = sub_df['Ic'].values
+#             I_vals = sub_df['I'].values
 
-            try:
-                rbf_Ic = RBFInterpolator(points, Ic_vals, kernel=rbf_kernel)
-                rbf_I = RBFInterpolator(points, I_vals, kernel=rbf_kernel)
+#             try:
+#                 rbf_Ic = RBFInterpolator(points, Ic_vals, kernel=rbf_kernel)
+#                 rbf_I = RBFInterpolator(points, I_vals, kernel=rbf_kernel)
 
-                Ic_interp = rbf_Ic([[Teff_star, logg_star, FeH_star]])[0]
-                I_interp = rbf_I([[Teff_star, logg_star, FeH_star]])[0]
+#                 Ic_interp = rbf_Ic([[Teff_star, logg_star, FeH_star]])[0]
+#                 I_interp = rbf_I([[Teff_star, logg_star, FeH_star]])[0]
 
-                sub_results.append([mu, wmu, Ic_interp, I_interp])
-            except Exception as e:
-                print(f"Interpolation failed at mu={mu}, wl={wl}, skipped. Reason: {e}")
-                continue
+#                 sub_results.append([mu, wmu, Ic_interp, I_interp])
+#             except Exception as e:
+#                 print(f"Interpolation failed at mu={mu}, wl={wl}, skipped. Reason: {e}")
+#                 continue
 
-        for mu, wmu, Ic_interp, I_interp in sub_results:
-            result.append([mu, wl, wmu, Ic_interp, I_interp])
+#         for mu, wmu, Ic_interp, I_interp in sub_results:
+#             result.append([mu, wl, wmu, Ic_interp, I_interp])
 
-    return pd.DataFrame(result, columns=['mu', 'wl', 'wmu', 'Ic_interp', 'I_interp']), in_boundary
+#     return pd.DataFrame(result, columns=['mu', 'wl', 'wmu', 'Ic_interp', 'I_interp']), in_boundary
 
 
-def interpolate_3DNLTEH_spectrum_RBF(teff, logg, monh, mu):        
+def interpolate_3DNLTEH_spectrum_RBF(teff, logg, monh, mu, boundary_vertices):        
     """
     Interpolate the H line profile at the given parameters.
     Parameters
@@ -717,11 +717,14 @@ def interpolate_3DNLTEH_spectrum_RBF(teff, logg, monh, mu):
         Cosine of the viewing angle.
     Returns
     """
+    point_star_2d = (teff, logg)
+    polygon = Path(boundary_vertices)
+    in_boundary = polygon.contains_point(point_star_2d)
 
     int_3dnlte_H_mu = np.concatenate([10**rbf_Hgamma(_scalar.transform([[teff, logg, monh, mu]]))[0],
                                     10**rbf_Hbeta(_scalar.transform([[teff, logg, monh, mu]]))[0],
                                     rbf_Halpha(_scalar.transform([[teff, logg, monh, mu]]))[0]])
-    return int_3dnlte_H_mu
+    return int_3dnlte_H_mu, in_boundary
 
 def load_cdr_to_linelist(sme, filepath):
     """

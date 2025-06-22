@@ -24,7 +24,7 @@ from .iliffe_vector import Iliffe_vector
 from .large_file_storage import setup_lfs
 from .sme import MASK_VALUES
 from .sme_synth import SME_DLL
-from .util import show_progress_bars, interpolate_H_spectrum, H_lineprof, boundary_vertices, safe_interpolation, interpolate_3DNLTEH_spectrum_RBF
+from .util import show_progress_bars, boundary_vertices, safe_interpolation, interpolate_3DNLTEH_spectrum_RBF
 from . import util
 from .sme import SME_Structure
 
@@ -1176,128 +1176,134 @@ class Synthesizer:
         interpolator = interp1d(sme_H_only_res[0][0], sme_H_only_res[1][0], kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
         int_1d_H = interpolator(util.lambda_H_3DNLTE)
         for mu in sme_H_only.mu:
-            int_3dnlte_H.append(interpolate_3DNLTEH_spectrum_RBF(sme_H_only.teff, sme_H_only.logg, sme_H_only.monh, mu))
-            
+            int_3dnlte_H_mu, in_boundary = interpolate_3DNLTEH_spectrum_RBF(sme_H_only.teff, sme_H_only.logg, sme_H_only.monh, mu, boundary_vertices)
+            int_3dnlte_H.append(int_3dnlte_H_mu)
+        
+        if not in_boundary:
+            logger.info(f"Outside the H 3dnlte grid, not performing correction.")
+            sme.tdnlte_H = False
+            return None
+        
         int_3dnlte_H = np.array(int_3dnlte_H)
         int_1d_H = np.array(int_1d_H)
         correction = int_3dnlte_H / int_1d_H
 
         return correction
 
-    def get_H_3dnlte_correction(self, sme):
-        """
-        Compute the 3D NLTE correction factor for hydrogen lines.
+    # def get_H_3dnlte_correction(self, sme):
+    #     """
+    #     Compute the 3D NLTE correction factor for hydrogen lines.
 
-        This function:
-        - Extracts only H I lines from the linelist in `sme`
-        - Synthesizes an H-only spectrum using LTE
-        - Interpolates the precomputed 3D NLTE correction profiles to match 
-        the current SME model parameters and mu-angle grid
-        - Computes a correction factor as the ratio of 3D NLTE to LTE intensities
-        - Applies this correction to the full synthetic spectrum (`sme_res`)
-        - Returns the corrected spectrum and the full correction matrix
+    #     This function:
+    #     - Extracts only H I lines from the linelist in `sme`
+    #     - Synthesizes an H-only spectrum using LTE
+    #     - Interpolates the precomputed 3D NLTE correction profiles to match 
+    #     the current SME model parameters and mu-angle grid
+    #     - Computes a correction factor as the ratio of 3D NLTE to LTE intensities
+    #     - Applies this correction to the full synthetic spectrum (`sme_res`)
+    #     - Returns the corrected spectrum and the full correction matrix
 
-        Parameters
-        ----------
-        sme : SME_Structure
-            The SME input object containing model parameters (Teff, logg, FeH, mu, linelist, etc.)
+    #     Parameters
+    #     ----------
+    #     sme : SME_Structure
+    #         The SME input object containing model parameters (Teff, logg, FeH, mu, linelist, etc.)
 
-        Returns
-        -------
+    #     Returns
+    #     -------
 
-        correction_all : list
-            A list containing:
-            [0] - Wavelength array used for correction
-            [1] - 2D correction factor array: shape (n_mu, n_wavelength)
-            [2] - 2D I/Ic intensity profile (3D NLTE): shape (n_mu, n_wavelength)
+    #     correction_all : list
+    #         A list containing:
+    #         [0] - Wavelength array used for correction
+    #         [1] - 2D correction factor array: shape (n_mu, n_wavelength)
+    #         [2] - 2D I/Ic intensity profile (3D NLTE): shape (n_mu, n_wavelength)
 
-        Notes
-        -----
-        - Uses global `H_lineprof` as the precomputed hydrogen profile database.
-        - `safe_interpolation` must support extrapolation with `fill_value=1.0` to avoid numerical issues.
-        - The correction is only applied within the defined `boundary_vertices`; outside that region, correction = 1.
+    #     Notes
+    #     -----
+    #     - Uses global `H_lineprof` as the precomputed hydrogen profile database.
+    #     - `safe_interpolation` must support extrapolation with `fill_value=1.0` to avoid numerical issues.
+    #     - The correction is only applied within the defined `boundary_vertices`; outside that region, correction = 1.
 
-        """
-        # Generate the synthetic spectra using only the H lines
-        logger.info(f"Getting H 3dnlte correction")
-        sme_H_only = SME_Structure()
-        sme_H_only.teff, sme_H_only.logg, sme_H_only.monh, sme_H_only.vmic, sme_H_only.vmac, sme_H_only.vsini = sme.teff, sme.logg, sme.monh, sme.vmic, sme.vmac, sme.vsini
-        sme_H_only.iptype = sme.iptype
-        sme_H_only.ipres = sme.ipres
-        # sme_H_only.specific_intensities_only = True
-        # sme_H_only.normalize_by_continuum = False
-        for i in range(len(sme.nlte.elements)):
-            sme_H_only.nlte.set_nlte(sme.nlte.elements[i], sme.nlte.grids[sme.nlte.elements[i]])
-        # sme_H_only = deepcopy(sme)
-        sme_H_only.linelist = sme.linelist[(sme.linelist['species'] == 'H 1') | ((sme.linelist['wlcent'] > 6562.8-0.5) & (sme.linelist['wlcent'] < 6562.8+0.5))]
-        sme_H_only.wave = np.arange(4000, 6700, 0.02)
-        sme_H_only.tdnlte_H = False
-        sme_H_only_res = self.synthesize_spectrum(sme_H_only)
+    #     """
+    #     # Generate the synthetic spectra using only the H lines
+    #     logger.info(f"Getting H 3dnlte correction")
+    #     sme_H_only = SME_Structure()
+    #     sme_H_only.teff, sme_H_only.logg, sme_H_only.monh, sme_H_only.vmic, sme_H_only.vmac, sme_H_only.vsini = sme.teff, sme.logg, sme.monh, sme.vmic, sme.vmac, sme.vsini
+    #     sme_H_only.iptype = sme.iptype
+    #     sme_H_only.ipres = sme.ipres
+    #     # sme_H_only.specific_intensities_only = True
+    #     # sme_H_only.normalize_by_continuum = False
+    #     for i in range(len(sme.nlte.elements)):
+    #         sme_H_only.nlte.set_nlte(sme.nlte.elements[i], sme.nlte.grids[sme.nlte.elements[i]])
+    #     # sme_H_only = deepcopy(sme)
+    #     sme_H_only.linelist = sme.linelist[(sme.linelist['species'] == 'H 1') | ((sme.linelist['wlcent'] > 6562.8-0.5) & (sme.linelist['wlcent'] < 6562.8+0.5))]
+    #     sme_H_only.wave = np.arange(4000, 6700, 0.02)
+    #     sme_H_only.tdnlte_H = False
+    #     sme_H_only_res = self.synthesize_spectrum(sme_H_only)
 
-        # Get the correction
-        resample_H_all, in_boundary = interpolate_H_spectrum(H_lineprof, sme.teff, sme.logg, sme.monh, boundary_vertices)
+    #     # Get the correction
+    #     resample_H_all, in_boundary = interpolate_H_spectrum(H_lineprof, sme.teff, sme.logg, sme.monh, boundary_vertices)
 
-        if not in_boundary:
-            logger.info(f"Outside H 3dnlte grid, not performing correction.")
-            sme.tdnlte_H = False
-            return None
+    #     if not in_boundary:
+    #         logger.info(f"Outside H 3dnlte grid, not performing correction.")
+    #         sme.tdnlte_H = False
+    #         return None
 
-        # Integrate the intensity
-        mu_array = resample_H_all.loc[resample_H_all['wl'] == resample_H_all.loc[0, 'wl'], 'mu'].values
-        wmu_array = resample_H_all.loc[resample_H_all['wl'] == resample_H_all.loc[0, 'wl'], 'wmu'].values
-        nmu = len(mu_array)
+    #     # Integrate the intensity
+    #     mu_array = resample_H_all.loc[resample_H_all['wl'] == resample_H_all.loc[0, 'wl'], 'mu'].values
+    #     wmu_array = resample_H_all.loc[resample_H_all['wl'] == resample_H_all.loc[0, 'wl'], 'wmu'].values
+    #     nmu = len(mu_array)
 
-        sint = []
-        cint = []
-        for mu in mu_array:
-            indices = resample_H_all['mu'] == mu
-            wint = resample_H_all.loc[indices, 'wl'].values
-            sint.append(resample_H_all.loc[indices, 'I_interp'].values)
-            cint.append(resample_H_all.loc[indices, 'Ic_interp'].values)
-        sint = np.array(sint)
-        cint = np.array(cint)
+    #     sint = []
+    #     cint = []
+    #     for mu in mu_array:
+    #         indices = resample_H_all['mu'] == mu
+    #         wint = resample_H_all.loc[indices, 'wl'].values
+    #         sint.append(resample_H_all.loc[indices, 'I_interp'].values)
+    #         cint.append(resample_H_all.loc[indices, 'Ic_interp'].values)
+    #     sint = np.array(sint)
+    #     cint = np.array(cint)
 
-        wgrid_all = []
-        sint_all = []
-        cint_all = []
+    #     wgrid_all = []
+    #     sint_all = []
+    #     cint_all = []
 
-        for indices in [wint < 4500, (wint > 4500) & (wint < 6000), wint > 6000]:
-            wint_single = wint[indices]
-            sint_single = sint[:, indices]
-            cint_single = cint[:, indices]
+    #     for indices in [wint < 4500, (wint > 4500) & (wint < 6000), wint > 6000]:
+    #         wint_single = wint[indices]
+    #         sint_single = sint[:, indices]
+    #         cint_single = cint[:, indices]
             
-            wgrid, vstep = self.new_wavelength_grid(wint_single)
-            cint_single = self.integrate_flux(mu_array, cint_single, 1, 0, 0, wt=wmu_array, tdnlteH=True)
-            cint_single = np.interp(wgrid, wint_single, cint_single)
+    #         wgrid, vstep = self.new_wavelength_grid(wint_single)
+    #         cint_single = self.integrate_flux(mu_array, cint_single, 1, 0, 0, wt=wmu_array, tdnlteH=True)
+    #         cint_single = np.interp(wgrid, wint_single, cint_single)
             
-            y_integrated = np.empty((nmu, len(wgrid)))
-            for imu in range(nmu):
-                y_integrated[imu] = np.interp(wgrid, wint_single, sint_single[imu])
-            sint_single = self.integrate_flux(mu_array, y_integrated, vstep, sme.vsini, sme.vmac, wt=wmu_array, tdnlteH=True)
+    #         y_integrated = np.empty((nmu, len(wgrid)))
+    #         for imu in range(nmu):
+    #             y_integrated[imu] = np.interp(wgrid, wint_single, sint_single[imu])
+    #         sint_single = self.integrate_flux(mu_array, y_integrated, vstep, sme.vsini, sme.vmac, wt=wmu_array, tdnlteH=True)
 
-            if "iptype" in sme:
-                logger.debug("Apply detector broadening")
-                # ToDo: fit for different resolution in segments (but not necessary?)
-                ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[0]
-                sint_single = broadening.apply_broadening(ipres, wint_single, sint_single, type=sme.iptype, sme=sme)
+    #         if "iptype" in sme:
+    #             logger.debug("Apply detector broadening")
+    #             # ToDo: fit for different resolution in segments (but not necessary?)
+    #             ipres = sme.ipres if np.size(sme.ipres) == 1 else sme.ipres[0]
+    #             sint_single = broadening.apply_broadening(ipres, wint_single, sint_single, type=sme.iptype, sme=sme)
 
-            wgrid_all.append(wgrid)
-            sint_all.append(sint_single)
-            cint_all.append(cint_single)
+    #         wgrid_all.append(wgrid)
+    #         sint_all.append(sint_single)
+    #         cint_all.append(cint_single)
 
-        wgrid_all = np.concatenate(wgrid_all)
-        sint_all = np.concatenate(sint_all)
-        cint_all = np.concatenate(cint_all)
+    #     wgrid_all = np.concatenate(wgrid_all)
+    #     sint_all = np.concatenate(sint_all)
+    #     cint_all = np.concatenate(cint_all)
 
-        interpolator = interp1d(wgrid_all, sint_all/cint_all, kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
-        correction_all = interpolator(sme_H_only_res.wave[0])
-        # if np.all(sint_all) == 1:
-        correction_all = correction_all / sme_H_only_res.synth[0]
-        interpolator = interp1d(wgrid_all, sint_all, kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
-        sint_all = interpolator(sme_H_only_res.wave[0])
-        interpolator = interp1d(wgrid_all, cint_all, kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
-        cint_all = interpolator(sme_H_only_res.wave[0])
-        return [sme_H_only_res.wave[0], correction_all, sint_all, cint_all, sme_H_only_res.synth[0]]
+    #     interpolator = interp1d(wgrid_all, sint_all/cint_all, kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
+    #     correction_all = interpolator(sme_H_only_res.wave[0])
+    #     # if np.all(sint_all) == 1:
+    #     correction_all = correction_all / sme_H_only_res.synth[0]
+    #     interpolator = interp1d(wgrid_all, sint_all, kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
+    #     sint_all = interpolator(sme_H_only_res.wave[0])
+    #     interpolator = interp1d(wgrid_all, cint_all, kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
+    #     cint_all = interpolator(sme_H_only_res.wave[0])
+    #     return [sme_H_only_res.wave[0], correction_all, sint_all, cint_all, sme_H_only_res.synth[0]]
 
 def synthesize_spectrum(sme, segments="all",**args):
     synthesizer = Synthesizer()
