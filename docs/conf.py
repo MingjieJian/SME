@@ -49,7 +49,8 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
-    "sphinx.ext.napoleon"
+    "sphinx.ext.napoleon",
+    "sphinx_math_dollar"
 ]
 
 autodoc_member_order = "groupwise"

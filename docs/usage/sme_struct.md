@@ -1,51 +1,26 @@
-The SME Structure
-=================
+# The SME Structure
 
-The SME structure contains all the information necessary to run pysme.
+The SME structure contains all the information necessary to run PySME.  
 It is by design similar to the IDL structure of SME, but with a lot of
 changes for ease of use. Note that some parameters depend on the number of
 segments in the observation. When creating a new structure it is therefore
 recommended to define the wavelengths first.
 
-.. _parameters:
+## Stellar Parameters
 
-Stellar Parameters
-------------------
+Stellar parameters describe the star in general and are usually what we want to fit.
 
-Stellar parameters describe the star in general,
-and are usually what we want to fit.
+- `teff`: The effective temperature of the star in **Kelvin**.
+- `logg`: The surface gravity of the star in log (cgs).
+- `monh`: The overall metallicity of the star in log₁₀ relative to the individual abundances (see {ref}`abund`).
+- `vsini`: The (projected) rotation velocity in km s⁻¹. Describes the rotational broadening.  
+  - If `vsini` is non-zero, you should set several values for `mu`.
+- `vmic`: The micro-turbulence velocity in km s⁻¹. Describes turbulence on scales **smaller** than the photon mean free path, adding additional line broadening.
+- `vmac`: The macro-turbulence velocity in km s⁻¹. Describes turbulence on scales **larger** than the photon mean free path, also contributing to broadening.
+- `mu`: Limb-angle values ($\mu = \cos\theta$) at which the radiative-transfer calculation is performed. $\mu = 1$ corresponds to disk center, $0$ to the limb.
 
-:teff: The effective temperature of the star in Kelvin
-:logg: The surface gravity of the star in log(cgs)
-:monh:
-    The overall metallicity of the star in log_10
-    relative to the indvidual abundances. See :ref:`abund`
-:vsini:
-    The (projected) rotation velocity in km/s.
-    Describes the rotational broadening.
-    If vsini is none zero, you need to set several values
-    for mu.
-:vmic:
-    The microturbulence velocity in km/s.
-    Describes the turbuluence on scales smaller
-    than the mean free path of the light.
-    Adds broadening to the spectrum.
-:vmac:
-    The macroturbulence velocity in km/s.
-    Describes the turbuluence on scales larger
-    than the mean free path of the light.
-    Adds broadening to the spectrum.
-:mu:
-    Mu values to calculate radiative transfer at. They describe
-    the distance from the center of the stellar disk to the
-    edge with mu = cos(theta), where theta is the angle of the
-    observation, i.e. mu = 1 at the center of the disk and 0 at
-    the edge.
 
-.. _radvel:
-
-Radial velocity and Continuum
------------------------------
+## Radial velocity and Continuum
 
 The radial velocity and continuum shift the continuum
 in wavelength and intensity direction respectively.
@@ -53,33 +28,22 @@ How to best handle them often depends on the situation
 and the quality of the observation data. Therefore
 PySME has many options to determine them.
 
-:cscale:
-    The polynomial parameters for each segment, that are applied
-    to the synthetic spectrum to match the observation.
-    The polynomial is calculated using the wavelength grid of the observation,
-    shifted so that the first point is 0. I.e. the polynomial is
-    f(wave - wave[0]).
-:vrad:
-    The radial velocity in km/s that was applied to each segment of the
-    synthethized spectrum to match the observation.
-:cscale_flag:
-    Determines how the continuum is fitted, or if it is fitted at all.
-
+- `cscale`: The polynomial parameters for each segment, that are applied to the synthetic spectrum to match the observation.
+    - The polynomial is calculated using the wavelength grid of the observation, shifted so that the first point is 0. I.e. the polynomial is f(wave - wave[0]).
+- `vrad`: The radial velocity in km/s that was applied to each segment of the synthethized spectrum to match the observation.
+- `cscale_flag`: Determines how the continuum is fitted, or if it is fitted at all.
     - none: No continuum correction
     - fix: Use whatever continuum scale has been set, but don't change it.
     - constant: scale everything by a factor
     - linear: First order polynomial, i.e. a straight line
     - quadratic: Second order polynomial
-
-:vrad_flag:
-    Determines how the radial velocity is fitted, or if it is fitted at all.
-
+- `vrad_flag`: Determines how the radial velocity is fitted, or if it is fitted at all.
     - none: No radial velocity fitting
     - fix: Use the set value for the radial velocity, but don't change it
     - each: Fit each wavelength segment individally
     - whole: Fit the whole spectrum at once
 
-:normalize_by_continuum:
+- `normalize_by_continuum`:
     A flag that determines, whether the synthetic flux should be normalized
     by the continous intensities or not. As long as you have a normalized
     observation this should be True, but if you have a flux calibrated
@@ -209,4 +173,12 @@ Other Parameters
 :id:
     The date and time when this structure or the
     last synthetic spectrum was created
-:md5: The md5 hash of the structure
+
+```{toctree}
+:maxdepth: 1    
+linelist
+abundance
+atmosphere
+nlte
+fitparameters
+fitresults
