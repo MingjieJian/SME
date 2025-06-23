@@ -564,8 +564,8 @@ class Synthesizer:
         """
         # Prepare 3D NLTE H profile corrections
         if sme.tdnlte_H:
-            sme.tdnlte_H_correction = self.get_H_3dnlte_correction(sme)
-        if sme.tdnlte_H_new:
+        #     sme.tdnlte_H_correction = self.get_H_3dnlte_correction(sme)
+        # if sme.tdnlte_H_new:
             sme.tdnlte_H_correction = self.get_H_3dnlte_correction_rbf(sme)
 
         if sme is not self.known_sme:
@@ -855,7 +855,6 @@ class Synthesizer:
 
         # Only calculate line opacities in the first segment
         #   Calculate spectral synthesis for each
-        logger.info(keep_line_opacity and not sme.first_segment)
         _, wint, sint, cint = dll.Transf(
             sme.mu,
             accrt=sme.accrt,  # threshold line opacity / cont opacity
@@ -865,12 +864,10 @@ class Synthesizer:
         )
 
         # Insert the new 3DNLTE correction
-        if sme.tdnlte_H_new:
+        if sme.tdnlte_H:
             interpolator = interp1d(util.lambda_H_3DNLTE, sme.tdnlte_H_correction, kind="linear", fill_value=1, bounds_error=False, assume_sorted=True)
             correction_3dnlte_H_interp = interpolator(wint)
 
-            print(sint.shape)
-            print(correction_3dnlte_H_interp.shape)
             sint *= correction_3dnlte_H_interp
 
         # # Assign the nlte flags
@@ -938,7 +935,7 @@ class Synthesizer:
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    def update_cdr(self, sme, cdr_database=None, cdr_create=False, cdr_grid_overwrite=False, mode='linear', dims=['teff', 'logg', 'vmic']):
+    def update_cdr(self, sme, cdr_database=None, cdr_create=False, cdr_grid_overwrite=False, mode='linear', dims=['teff', 'logg', 'monh']):
         '''
         Update or get the central depth and wavelength range of a line list. This version separate the parallel and non-parallel mode completely.
         Author: Mingjie Jian
