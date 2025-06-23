@@ -1029,7 +1029,7 @@ class Synthesizer:
 
         param_grid, fname_map = _load_all_grid_points(cdr_database)
 
-        if len(dims) == 3:
+        if len(dims) == 3 and len(param_grid) > 0:
             # Remove vmic in the grid
             # vmic_mask = np.isclose(param_grid[:, -1], fixed_vmic)
             param_grid = param_grid[:, :-1]
