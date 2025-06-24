@@ -28,7 +28,7 @@ The atmopshere object has the following fields
 - **`vmic`**: Microturbulence velocity in km/s  
 - **`vmac`**: Macroturbulence velocity in km/s  
 - **`vturb`**: Turbulent velocity in km/s  
-- **`lonh`**: ? Metallicity  
+- **`lonh`**: Mixing length   
 - **`source`**: Filename of the atmosphere grid  
 - **`depth`**:  
   The depth scale to use for calculations.  

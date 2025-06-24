@@ -53,6 +53,11 @@ extensions = [
     "sphinx_math_dollar"
 ]
 
+myst_enable_extensions =[
+    'strikethrough',
+    'fieldlist'
+]
+
 autodoc_member_order = "groupwise"
 
 # Add any paths that contain templates here, relative to this directory.
@@ -105,6 +110,12 @@ html_theme = "sphinx_book_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+html_logo = "_static/pysme_logo.png"   # 路径相对 docs/
+html_theme_options = {
+    "logo_only": False,        # 只显示 logo，不再显示项目名
+    "display_version": True  # 如需同时隐藏版本号
+}
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

@@ -86,7 +86,7 @@ Abundance
 
 The individal abundances are stored in a seperate Abundance
 object, which shares the same metallicity as the overall structure.
-For more detailed information see :ref:`abund`
+For more detailed information see [](abundance).
 
 :abund: The abundance object
 

@@ -78,7 +78,7 @@ _citation_asplund2005 = r"""
 }
 """
 
-_citation_asplund2007 = r"""
+_citation_grevesse2007 = r"""
 @ARTICLE{2007SSRv..130..105G,
        author = {{Grevesse}, N. and {Asplund}, M. and {Sauval}, A.~J.},
         title = "{The Solar Chemical Composition}",
@@ -94,27 +94,6 @@ _citation_asplund2007 = r"""
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 """
-
-_citation_asplund2021 = r"""
-@ARTICLE{2021A&A...653A.141A,
-       author = {{Asplund}, M. and {Amarsi}, A.~M. and {Grevesse}, N.},
-        title = "{The chemical make-up of the Sun: A 2020 vision}",
-      journal = {\aap},
-     keywords = {Sun: abundances, Sun: photosphere, Sun: atmosphere, line: formation, meteorites, meteors, meteoroids, Sun: helioseismology, Astrophysics - Solar and Stellar Astrophysics, Astrophysics - Earth and Planetary Astrophysics},
-         year = 2021,
-        month = sep,
-       volume = {653},
-          eid = {A141},
-        pages = {A141},
-          doi = {10.1051/0004-6361/202140445},
-archivePrefix = {arXiv},
-       eprint = {2105.01661},
- primaryClass = {astro-ph.SR},
-       adsurl = {https://ui.adsabs.harvard.edu/abs/2021A&A...653A.141A},
-      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
-}
-"""
-
 
 _citation_asplund2009 = r"""
 @ARTICLE{2009ARA&A..47..481A,
@@ -137,20 +116,23 @@ _citation_asplund2009 = r"""
 }
 """
 
-_citation_grevesse2007 = r"""
-@ARTICLE{2007SSRv..130..105G,
-    author = {{Grevesse}, N. and {Asplund}, M. and {Sauval}, A.~J.},
-    title = "{The Solar Chemical Composition}",
-    journal = {\ssr},
-    keywords = {Sun: abundances, photosphere, corona},
-    year = "2007",
-    month = "Jun",
-    volume = {130},
-    number = {1-4},
-    pages = {105-114},
-    doi = {10.1007/s11214-007-9173-7},
-    adsurl = {https://ui.adsabs.harvard.edu/abs/2007SSRv..130..105G},
-    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+_citation_asplund2021 = r"""
+@ARTICLE{2021A&A...653A.141A,
+       author = {{Asplund}, M. and {Amarsi}, A.~M. and {Grevesse}, N.},
+        title = "{The chemical make-up of the Sun: A 2020 vision}",
+      journal = {\aap},
+     keywords = {Sun: abundances, Sun: photosphere, Sun: atmosphere, line: formation, meteorites, meteors, meteoroids, Sun: helioseismology, Astrophysics - Solar and Stellar Astrophysics, Astrophysics - Earth and Planetary Astrophysics},
+         year = 2021,
+        month = sep,
+       volume = {653},
+          eid = {A141},
+        pages = {A141},
+          doi = {10.1051/0004-6361/202140445},
+archivePrefix = {arXiv},
+       eprint = {2105.01661},
+ primaryClass = {astro-ph.SR},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2021A&A...653A.141A},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 """
 
