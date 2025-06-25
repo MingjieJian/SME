@@ -17,8 +17,13 @@ import wget
 
 logger = logging.getLogger(__name__)
 
+smelib_releases = {
+    "default":  "latest/download",
+    "0.4.198":  "download/v6.0.6",
+    "0.4.199":  "download/v6.0.6",          
+}
 
-def download_libsme(loc=None):
+def download_libsme(loc=None, pysme_version='default'):
     """
     Download the SME library and the necessary datafiles
 
@@ -33,10 +38,19 @@ def download_libsme(loc=None):
     KeyError
         If no existing library is found for this system
     """
+
+    pysme_version = pysme_version.split('+')[0]
+    release_subpath = smelib_releases.get(
+        pysme_version, smelib_releases["default"]
+    )
+
     if loc is None:
         loc = dirname(dirname(get_full_libfile()))
 
     # Download compiled library from github releases
+    github_releases_url = (
+        f"https://github.com/MingjieJian/SMElib/releases/{release_subpath}"
+    )
     print("Downloading and installing the latest libsme version for this system")
     aliases = {
         "Linux": "manylinux2014_x86_64",
@@ -72,7 +86,6 @@ def download_libsme(loc=None):
                 use_version = match.group(1)
             system += f'-arm-M{use_version}' 
 
-    github_releases_url = "https://github.com/MingjieJian/SMElib/releases/latest/download"
     github_releases_fname = "{system}-gfortran.zip".format(system=system)
     url = github_releases_url + "/" + github_releases_fname
     fname = join(loc, github_releases_fname)
@@ -91,9 +104,6 @@ def download_libsme(loc=None):
 
     print("Extracting file")
     zipfile.ZipFile(fname).extractall(loc)
-    lib_dir = join(loc, get_lib_directory())
-    print(lib_dir)
-    print(f"Current files in lib folder: {os.listdir(lib_dir) if exists(lib_dir) else 'lib directory not found'}")
 
     try:
         os.remove(fname)

@@ -443,84 +443,310 @@ boundary_vertices = [
     (4500, 5.0), (4500, 2.5), (4000, 2.5), (4000, 1.5)
 ]
 
-def interpolate_H_spectrum(
-    df: pd.DataFrame,
-    Teff_star: float,
-    logg_star: float,
-    FeH_star: float,
-    boundary_vertices: list,
-    rbf_kernel: str = 'linear',
-    fill_value: float = np.nan,
-):
+class Scalar:
+    """Scalar class used to scale data. Can create a scalar, scale input data, save and load previous scalars.
     """
-    Interpolates the hydrogen line spectrum (Ic and I) over a grid of stellar parameters
-    (Teff, logg, FeH) using radial basis function (RBF) interpolation, with 
-    boundary control in the Teff-logg space.
 
+    def __init__(self):
+        self.mean = None
+        self.std = None
+
+    def fit(self, data):
+        """Create scalar.
+
+        Parameters
+        ----------
+        data : 2darray
+            Needs to be in the form [num of objects x num of parameters].
+        """
+
+        # make sure no crazy inputs
+        try:
+            data = np.array(data)
+        except:
+            raise ValueError('Data must be able to be converted into a numpy array.')
+
+        # make sure the dimension of the data is correct
+        if len(data.shape) != 2:
+            raise ValueError('Data must be a 2D-array.')
+
+        self.mean = np.mean(data, axis = 0)
+        self.std = np.std(data, axis = 0)
+
+    def _check(self, data):
+        """Check that the input data is valid data.
+
+        Parameters
+        ----------
+        data : 2darray
+            Needs to be in the form [num of objects x num of parameters].
+        """
+
+        # make sure there is a fitted scalar
+        if (self.mean is None) or (self.std is None):
+            raise AttributeError('A scalar must be created before data can be fitted. Call fit to fit a scalar.')
+
+        # make sure no crazy inputs
+        try:
+            data = np.array(data)
+        except:
+            raise ValueError('Data must be able to be converted into a numpy array.')
+
+        # make sure the dimension of the data is correct
+        if len(data.shape) != 2:
+            raise ValueError('Data must a 2D-array.')
+
+        # make sure dimensions of data to be transformed and fitted data are the same
+        if data.shape[1] != len(self.mean):
+            raise ValueError('Data to be transformed must have the same number of columns as the fitted data.')
+
+    def transform(self, data):
+        """Scale input data.
+
+        Parameters
+        ----------
+        data : 2darray
+            Needs to be in the form [num of objects x num of parameters].
+
+        Returns
+        -------
+        scaled_data : 2darray
+            The scaled data in the form [num of objects x num of parameters].
+        """
+
+        self._check(data) # check data is valid
+
+        scaled_data = (data - self.mean)/self.std
+        return scaled_data
+
+    def untransform(self, data):
+        """Unscale input data.
+
+        Parameters
+        ----------
+        data : 2darray
+            Needs to be in the form [num of objects x num of parameters].
+
+        Returns
+        -------
+        unscaled_data : 2darray
+            The unscaled data in the form [num of objects x num of parameters].
+        """
+
+        self._check(data) # check data is valid
+
+        unscaled_data = data*self.std + self.mean 
+        return unscaled_data
+
+    def save(self, name):
+        """Save scalar
+
+        Parameters
+        ----------
+        name : str
+            The name to save the scalar under.
+        """
+
+        if (self.mean is None) or (self.std is None):
+            raise AttributeError('Need a fitted scalar before saving the scalar. Call fit to fit a scalar.')
+        else:
+            np.save(name, [self.mean, self.std])
+
+    def load(self, name):
+        """Load scalar.
+
+        Parameters
+        ----------
+        name : str
+            The name of the saved scalar.
+        """
+
+        path = os.path.join(os.getcwd(), name)
+        if not os.path.isfile(path):
+            raise FileNotFoundError('Attempted to load a scalar not found, path given: {}'.format(path))
+        else:
+            self.mean, self.std = np.load(name)
+
+_unique_grid = (
+    H_lineprof[["Teff", "logg", "Fe_H", "mu"]].drop_duplicates().reset_index(drop=True)
+)
+
+_indices_H_gamma = (H_lineprof['wl'] < 4500)
+_indices_H_beta = (H_lineprof['wl'] > 4500) & (H_lineprof['wl'] < 5500)
+_indices_H_alpha = (H_lineprof['wl'] > 5500)
+
+_H_alpha_Ir = []
+_H_beta_Ir = []
+_H_gamma_Ir = []
+for i in _unique_grid.index:
+    _indices = np.isclose(H_lineprof['Teff'], _unique_grid.loc[i, 'Teff']) 
+    _indices &= np.isclose(H_lineprof['logg'], _unique_grid.loc[i, 'logg']) 
+    _indices &= np.isclose(H_lineprof['Fe_H'], _unique_grid.loc[i, 'Fe_H']) 
+    _indices &= np.isclose(H_lineprof['mu'], _unique_grid.loc[i, 'mu'])
+    _H_alpha_spectrum = H_lineprof[_indices & _indices_H_alpha]
+    _H_beta_spectrum = H_lineprof[_indices & _indices_H_beta]
+    _H_gamma_spectrum = H_lineprof[_indices & _indices_H_gamma]
+    if i == 0:
+        _lambda_H_alpha = _H_alpha_spectrum['wl'].values
+        _lambda_H_beta = _H_beta_spectrum['wl'].values
+        _lambda_H_gamma = _H_gamma_spectrum['wl'].values
+    _H_alpha_Ir.append(_H_alpha_spectrum['I'].values/_H_alpha_spectrum['Ic'].values)
+    _H_beta_Ir.append(_H_beta_spectrum['I'].values/_H_beta_spectrum['Ic'].values)
+    _H_gamma_Ir.append(_H_gamma_spectrum['I'].values/_H_gamma_spectrum['Ic'].values)
+
+_H_alpha_Ir = np.array(_H_alpha_Ir)
+_H_beta_Ir = np.array(_H_beta_Ir)
+_H_gamma_Ir = np.array(_H_gamma_Ir)
+
+lambda_H_3DNLTE = np.concatenate([_lambda_H_gamma, _lambda_H_beta, _lambda_H_alpha])
+
+_scalar = Scalar()
+_scalar.fit(_unique_grid)
+_X = _scalar.transform(_unique_grid).values
+rbf_Halpha = RBFInterpolator(
+            _X, _H_alpha_Ir,
+            neighbors=50,
+            kernel="cubic"
+        )
+rbf_Hbeta = RBFInterpolator(
+            _X, np.log10(np.clip(_H_beta_Ir, 1e-12, None)),
+            neighbors=None,
+            kernel="cubic"
+        )
+rbf_Hgamma = RBFInterpolator(
+            _X, np.log10(np.clip(_H_gamma_Ir, 1e-12, None)),
+            neighbors=None,
+            kernel="cubic"
+        )
+
+# def interpolate_H_spectrum(
+#     df: pd.DataFrame,
+#     Teff_star: float,
+#     logg_star: float,
+#     FeH_star: float,
+#     boundary_vertices: list,
+#     rbf_kernel: str = 'linear',
+#     fill_value: float = np.nan,
+# ):
+#     """
+#     Interpolates the hydrogen line spectrum (Ic and I) over a grid of stellar parameters
+#     (Teff, logg, FeH) using radial basis function (RBF) interpolation, with 
+#     boundary control in the Teff-logg space.
+
+#     Parameters
+#     ----------
+#     df : pd.DataFrame
+#         Hydrogen line profile data with columns:
+#         ['Teff', 'logg', 'Fe_H', 'mu', 'wl', 'wmu', 'Ic', 'I'].
+#     Teff_star : float
+#         Effective temperature to interpolate at.
+#     logg_star : float
+#         Surface gravity to interpolate at.
+#     FeH_star : float
+#         Metallicity to interpolate at.
+#     boundary_vertices : list of (Teff, logg)
+#         Defines interpolation region. Outside this, returns fill_value.
+#     rbf_kernel : str
+#         Kernel to use for RBFInterpolator.
+#     fill_value : float
+#         Value to return if point is outside interpolation region.
+#     output : str
+#         'intensity' returns detailed (mu, wl) values,
+#         'flux' returns integrated flux across mu for each wl.
+
+#     Returns
+#     -------
+#     pd.DataFrame
+#         Interpolated result as either intensity table or flux summary.
+#     """
+#     result = []
+#     point_star_2d = (Teff_star, logg_star)
+#     polygon = Path(boundary_vertices)
+#     in_boundary = polygon.contains_point(point_star_2d)
+#     unique_wl = df['wl'].unique()
+
+#     for wl in unique_wl:
+#         sub_df_wl = df[df['wl'] == wl]
+#         sub_results = []
+
+#         for mu in sub_df_wl['mu'].unique():
+#             sub_df = sub_df_wl[sub_df_wl['mu'] == mu]
+#             if sub_df.shape[0] < 4:
+#                 continue
+
+#             wmu = sub_df['wmu'].iloc[0]
+
+#             if not in_boundary:
+#                 sub_results.append([mu, wmu, fill_value, fill_value])
+#                 continue
+
+#             points = sub_df[['Teff', 'logg', 'Fe_H']].values
+#             Ic_vals = sub_df['Ic'].values
+#             I_vals = sub_df['I'].values
+
+#             try:
+#                 rbf_Ic = RBFInterpolator(points, Ic_vals, kernel=rbf_kernel)
+#                 rbf_I = RBFInterpolator(points, I_vals, kernel=rbf_kernel)
+
+#                 Ic_interp = rbf_Ic([[Teff_star, logg_star, FeH_star]])[0]
+#                 I_interp = rbf_I([[Teff_star, logg_star, FeH_star]])[0]
+
+#                 sub_results.append([mu, wmu, Ic_interp, I_interp])
+#             except Exception as e:
+#                 print(f"Interpolation failed at mu={mu}, wl={wl}, skipped. Reason: {e}")
+#                 continue
+
+#         for mu, wmu, Ic_interp, I_interp in sub_results:
+#             result.append([mu, wl, wmu, Ic_interp, I_interp])
+
+#     return pd.DataFrame(result, columns=['mu', 'wl', 'wmu', 'Ic_interp', 'I_interp']), in_boundary
+
+
+def interpolate_3DNLTEH_spectrum_RBF(teff, logg, monh, mu, boundary_vertices):        
+    """
+    Interpolate the H line profile at the given parameters.
     Parameters
     ----------
-    df : pd.DataFrame
-        Hydrogen line profile data with columns:
-        ['Teff', 'logg', 'Fe_H', 'mu', 'wl', 'wmu', 'Ic', 'I'].
-    Teff_star : float
-        Effective temperature to interpolate at.
-    logg_star : float
-        Surface gravity to interpolate at.
-    FeH_star : float
-        Metallicity to interpolate at.
-    boundary_vertices : list of (Teff, logg)
-        Defines interpolation region. Outside this, returns fill_value.
-    rbf_kernel : str
-        Kernel to use for RBFInterpolator.
-    fill_value : float
-        Value to return if point is outside interpolation region.
-    output : str
-        'intensity' returns detailed (mu, wl) values,
-        'flux' returns integrated flux across mu for each wl.
-
+    Teff : float
+        Effective temperature.
+    logg : float
+        Surface gravity.
+    FeH : float
+        Metallicity.
+    mu : float
+        Cosine of the viewing angle.
     Returns
-    -------
-    pd.DataFrame
-        Interpolated result as either intensity table or flux summary.
     """
-    result = []
-    point_star_2d = (Teff_star, logg_star)
+    point_star_2d = (teff, logg)
     polygon = Path(boundary_vertices)
     in_boundary = polygon.contains_point(point_star_2d)
-    unique_wl = df['wl'].unique()
 
-    for wl in unique_wl:
-        sub_df_wl = df[df['wl'] == wl]
-        sub_results = []
+    int_3dnlte_H_mu = np.concatenate([10**rbf_Hgamma(_scalar.transform([[teff, logg, monh, mu]]))[0],
+                                    10**rbf_Hbeta(_scalar.transform([[teff, logg, monh, mu]]))[0],
+                                    rbf_Halpha(_scalar.transform([[teff, logg, monh, mu]]))[0]])
+    return int_3dnlte_H_mu, in_boundary
 
-        for mu in sub_df_wl['mu'].unique():
-            sub_df = sub_df_wl[sub_df_wl['mu'] == mu]
-            if sub_df.shape[0] < 4:
-                continue
+def load_cdr_to_linelist(sme, filepath):
+    """
+    Load a compressed .npz CDR file and assign its content to sme.linelist._lines.
 
-            wmu = sub_df['wmu'].iloc[0]
+    Parameters:
+    - sme: SME object with .linelist._lines dictionary
+    - filepath: full path to the .npz file with 'line_info' inside
+    """
+    data = np.load(filepath)['line_info']
+    iloc = data[:, 0].astype(int)
 
-            if not in_boundary:
-                sub_results.append([mu, wmu, fill_value, fill_value])
-                continue
+    n_lines_total = len(sme.linelist)
 
-            points = sub_df[['Teff', 'logg', 'Fe_H']].values
-            Ic_vals = sub_df['Ic'].values
-            I_vals = sub_df['I'].values
+    arr_cdepth = np.zeros(n_lines_total, dtype=np.float32) + 0.0001
+    arr_lrs =  sme.linelist['wlcent'] - 0.3
+    arr_lre =  sme.linelist['wlcent'] + 0.3
 
-            try:
-                rbf_Ic = RBFInterpolator(points, Ic_vals, kernel=rbf_kernel)
-                rbf_I = RBFInterpolator(points, I_vals, kernel=rbf_kernel)
+    arr_cdepth[iloc] = data[:, 1]
+    arr_lrs[iloc]    = data[:, 2]
+    arr_lre[iloc]    = data[:, 3]
 
-                Ic_interp = rbf_Ic([[Teff_star, logg_star, FeH_star]])[0]
-                I_interp = rbf_I([[Teff_star, logg_star, FeH_star]])[0]
-
-                sub_results.append([mu, wmu, Ic_interp, I_interp])
-            except Exception as e:
-                print(f"Interpolation failed at mu={mu}, wl={wl}, skipped. Reason: {e}")
-                continue
-
-        for mu, wmu, Ic_interp, I_interp in sub_results:
-            result.append([mu, wl, wmu, Ic_interp, I_interp])
-
-    return pd.DataFrame(result, columns=['mu', 'wl', 'wmu', 'Ic_interp', 'I_interp']), in_boundary
+    sme.linelist._lines['central_depth'] = arr_cdepth
+    sme.linelist._lines['line_range_s']  = arr_lrs
+    sme.linelist._lines['line_range_e']  = arr_lre
