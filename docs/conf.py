@@ -112,10 +112,6 @@ html_theme = "sphinx_book_theme"
 html_static_path = ["_static"]
 
 html_logo = "_static/pysme_logo.png"   # 路径相对 docs/
-html_theme_options = {
-    "logo_only": False,        # 只显示 logo，不再显示项目名
-    "display_version": True  # 如需同时隐藏版本号
-}
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

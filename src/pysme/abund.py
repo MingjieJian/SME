@@ -680,16 +680,16 @@ class Abund(IPersist):
         """
         self.type = "H=12"
         self.citation_info = _citation_atomic_weights + "\n"
-        if pattern_name.lower() in ["anders1989", "solar"]:
+        if pattern_name.lower() in ["anders1989"]:
             self._pattern = np.array(_anders1989, dtype=float)
             self.citation_info += _citation_anders1989
-        elif pattern_name.lower() in ["grevesse1996", "solar"]:
+        elif pattern_name.lower() in ["grevesse1996"]:
             self._pattern = np.array(_grevesse1996, dtype=float)
             self.citation_info += _citation_grevesse1996
-        elif pattern_name.lower() in ["grevesse1998", "solar"]:
+        elif pattern_name.lower() in ["grevesse1998"]:
             self._pattern = np.array(_grevesse1998, dtype=float)
             self.citation_info += _citation_grevesse1998
-        elif pattern_name.lower() in ["asplund2005", "solar"]:
+        elif pattern_name.lower() in ["asplund2005"]:
             self._pattern = np.array(_asplund2005, dtype=float)
             self.citation_info += _citation_asplund2005
         elif pattern_name.lower() in ["grevesse2007", "solar"]:

@@ -71,13 +71,12 @@ From solar photosphere:
 - `asplund2009`: [Asplund, Grevesse & Sauval (2009, ARA&A)](https://ui.adsabs.harvard.edu/abs/2009ARA&A..47..481A)
 - `asplund2021`: [Asplund, Amarsi & Grevesse (2021, A&A)](https://ui.adsabs.harvard.edu/abs/2021A&A...653A.141A)
 
-
 From CI chondrites:
 - `lodders2003`: [Lodders(2003 ApJ)](https://ui.adsabs.harvard.edu/abs/2003ApJ...591.1220L)
 - `lodders2010`: [Lodders(2010 ASSP)](https://ui.adsabs.harvard.edu/abs/2010ASSP...16..379L)
 
 They can be initialized by passing their name during the
 creation of the abundance. E.g. Abund("grevesse2007").
-The default solar abundance is 'asplund2009' and is also
+The default solar abundance is 'grevesse2007' and is also
 available using Abund.solar().
 

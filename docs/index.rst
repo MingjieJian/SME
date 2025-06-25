@@ -14,7 +14,7 @@ PySME is its modern Python front-end: a wrapper around the original C++/Fortran 
 .. note:: 
 
    * If you are new to PySME: follow the :ref:`usage/installation` and :ref:`usage/quickstart` to get started.
-   * If you want to get familiar with PySME: read the :ref:`usage/sme_struct` for detail information on using PySME.
+   * If you want to get familiar with PySME: read the :ref:`usage/sme_struct` for detail information on using the code.
    * If you are familiar with PySME: check out the :ref:`usage/how-to.md` and :ref:`usage/changelog` to see the new functions.  
 
 .. toctree::
@@ -30,6 +30,7 @@ PySME is its modern Python front-end: a wrapper around the original C++/Fortran 
    usage/system_info
    usage/changes
    Changelog <usage/changelog>
+   For dev <usage/fordev>
    _sources/modules
 
 Indices and tables
