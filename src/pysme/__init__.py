@@ -47,7 +47,7 @@ from .smelib import libtools
 
 libfile = libtools.get_full_libfile()
 if not os.path.exists(libfile):
-    libtools.download_libsme()
+    libtools.download_libsme(pysme_version=__version__)
 
 try:
     cdll.LoadLibrary(libfile)
