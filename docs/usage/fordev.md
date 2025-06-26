@@ -69,6 +69,7 @@ The follwing table shows the version matching between SMElib and PySME.
 |v0.5.0-|latest (v6.13)|6.13 (June 2025)|
 
 The PySME version range indicate the versions which manually matchting of the SMELib is required, and the single PySME version indicates the one with freezed SMElib (thus only pip install is required before using).
+Note that the support for Apple Silicon Mac is not complete for PySME v0.4. 
 
 ### How to update PySME/SMElib version
 
