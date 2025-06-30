@@ -113,8 +113,6 @@ class ValdFile(LineList):
         self.abund = None
         self.unit = None
         self.energy_unit = None
-        self.cdepth_range_paras = None
-        self.cdepth_range_paras_thres = {'teff':500, 'logg':1, 'monh':0.5}
         linelist = self.loads(filename)
 
         super().__init__(
