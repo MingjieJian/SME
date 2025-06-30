@@ -610,7 +610,7 @@ class Synthesizer:
         opacity = [[] for _ in range(n_segments)]
         if contribution_function:
             sme.contribution_function = [[] for _ in range(n_segments)]
-        sme.linelist._lines['nlte_flag'] = np.nan
+        sme.linelist._lines['nlte_flag'] = -1
 
         # If wavelengths are already defined use those as output
         if "wave" in sme:
@@ -755,6 +755,7 @@ class Synthesizer:
                 sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags.astype(float)
             else:
                 sme.nlte.flags = nlte_flags
+                sme.linelist._lines['nlte_flag'] = nlte_flags.astype(float)
 
         # Store the adaptive wavelength grid for the future
 
@@ -873,10 +874,6 @@ class Synthesizer:
         # # Assign the nlte flags
         # nlte_flags = dll.GetNLTEflags()
         # sme.nlte.flags = nlte_flags
-        # if linelist_mode == 'auto':
-        #     sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags.astype(float)
-        # else:
-        #     sme.nlte.flags = nlte_flags
 
         # Store the adaptive wavelength grid for the future
         # if it was newly created
