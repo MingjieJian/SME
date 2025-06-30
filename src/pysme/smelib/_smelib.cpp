@@ -1,10 +1,16 @@
 #define PY_SSIZE_T_CLEAN
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <Python.h>
+#include <numpy/ndarraytypes.h>
 #include <numpy/arrayobject.h>
 
 // Header of the SME library
 #include "sme_synth_faster.h"
+
+// Compatibility for older versions of Numpy
+#ifndef PyDataType_ELSIZE
+    #define PyDataType_ELSIZE(descr) ((descr)->elsize)
+#endif
 
 // Everything else is considered an error
 const char OK_response = '\0';
@@ -203,7 +209,7 @@ static PyObject *smelib_InputLineList(PyObject *self, PyObject *args)
     // Get sizes
     nlines = PyArray_DIM(species_array, 0);
     dtype = PyArray_DESCR(species_array);
-    nchar = dtype->elsize;
+    nchar = PyDataType_ELSIZE(dtype);
 
     if (PyArray_DIM(linelist_array, 0) != 8)
     {
@@ -330,7 +336,7 @@ static PyObject *smelib_UpdateLineList(PyObject *self, PyObject *args)
     // Get sizes
     nlines = PyArray_DIM(species_array, 0);
     dtype = PyArray_DESCR(species_array);
-    nchar = dtype->elsize;
+    nchar = PyDataType_ELSIZE(dtype);
 
     // Check sizes
     if (PyArray_DIM(linelist_array, 0) != 8)
