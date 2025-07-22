@@ -9,7 +9,7 @@ import logging
 import os, re
 import platform
 import subprocess
-import sys
+import sys, glob
 import zipfile
 from os.path import basename, dirname, exists, join, realpath
 
@@ -119,6 +119,53 @@ def download_libsme(loc=None, pysme_version='default'):
         subprocess.run(
             ["install_name_tool", "-id", fname, fname], capture_output=True, check=True
         )
+
+def download_compile_libsme(loc=None, pysme_version='default'):
+    """
+    Download the SME library source code and the necessary datafiles, 
+        then complile the library.
+
+    Parameters
+    ----------
+    loc : str, optional
+        the path to the location the files should be placed,
+        by default they are placed so that PySME can find and use them
+
+    Raises
+    ------
+    KeyError
+        If no existing library is found for this system
+    """
+
+    github_sourcecode_url = 'https://github.com/MingjieJian/SMElib/archive/refs/tags/6.13.2.zip'
+    pysme_loc = join(dirname(dirname(__file__)))
+    # print(pysme_loc)
+    lib_sc_loc = f'{pysme_loc}/lib_sc/'
+    lib_sc_zip = f'{lib_sc_loc}/SMElib-{github_sourcecode_url.split("/")[-1]}'
+    lib_sc_current = lib_sc_zip[:-4]
+
+    os.makedirs(lib_sc_loc, exist_ok=True)
+
+    if not os.path.exists(lib_sc_zip):
+        wget.download(github_sourcecode_url, out=lib_sc_loc)
+
+    zipfile.ZipFile(lib_sc_zip).extractall(lib_sc_loc)
+
+    cwd = os.getcwd()
+    os.chdir(lib_sc_current)
+    subprocess.run(["chmod", '777', "./compile_smelib.sh"])
+    subprocess.run(["./compile_smelib.sh"])
+
+    os.makedirs("../../lib", exist_ok=True)
+    files = glob.glob("lib/*")
+    subprocess.run(["cp", "-t", "../../lib"] + files, check=True)
+
+    data_files = glob.glob("src/data/*")
+    os.makedirs("../../share/libsme", exist_ok=True)
+    subprocess.run(["cp", "-t", "../../share/libsme"] + data_files, check=True)
+    os.chdir(cwd)
+
+    subprocess.run(["rm", "-r", lib_sc_loc], check=True)
 
 def compile_interface():
     """

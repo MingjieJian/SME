@@ -55,8 +55,8 @@ There are a few versions in SME/PySME:
 
 For the convenience of development, most of the PySME version will download the latest version of SMELib in their first run.
 This will allow us to keep the PySME using the latest SMElib, receving new functions and bug fixes on the library side.
-However, when SMElib have breaking updates, the older version of PySME would match with incompatible SMELib.
-Before each breaking updates n SMElib, one specific PySME version will be connected with a specific SMELib version to maintain the compatibilty of this version.
+However, when SMElib have breaking updates, the older version of PySME would match with incompatible SMELib in its latest version.
+Before each breaking updates in SMElib, one specific PySME version (usually ) will be connected with a specific SMELib version to maintain the compatibilty of this version.
 
 For other versions, we will not solve the future compatibility issue.
 You can download the corresponding SMElib, and override the default library manually.
@@ -65,11 +65,14 @@ The follwing table shows the version matching between SMElib and PySME.
 
 |PySME version|SMElib release version|SMElib version|
 |:--:|:--:|:--:|
-|v0.4.167-v0.4.198|v6.0.6|6.03 (July 2019)|
-|v0.5.0-|latest (v6.13)|6.13 (June 2025)|
+|v0.5.0-|latest (v6.13.x)|6.13 (June 2025)|
+|v0.4.199|v6.0.6 (freezed)|6.03 (July 2019)|
+|v0.4.167-v0.4.198|v6.0.6 (not freezed)|6.03 (July 2019)|
 
 The PySME version range indicate the versions which manually matchting of the SMELib is required, and the single PySME version indicates the one with freezed SMElib (thus only pip install is required before using).
-Note that the support for Apple Silicon Mac is not complete for PySME v0.4. 
+Note that:
+- Small bug fix on SMElib will be labeled with the PATCH version, thus the actual SMElib used would be 6.13.x. The change of SMElib MAJOR and MINOR version will follow that in SME. 
+- The support for Apple Silicon Mac is not complete for PySME v0.4. You need to clone the SMELib from the source code, compile and replace the library files by yourself.
 
 ### How to update PySME/SMElib version
 
