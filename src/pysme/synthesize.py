@@ -610,7 +610,7 @@ class Synthesizer:
         opacity = [[] for _ in range(n_segments)]
         if contribution_function:
             sme.contribution_function = [[] for _ in range(n_segments)]
-        sme.linelist._lines['nlte_flag'] = np.nan
+        sme.linelist._lines['nlte_flag'] = -1
 
         # If wavelengths are already defined use those as output
         if "wave" in sme:
@@ -728,7 +728,7 @@ class Synthesizer:
                 # sme.central_depth[s] = central_depth[s]
                 # sme.line_range[s] = line_range[s]
 
-            if passLineList and self.update_cdr_switch:
+            if passLineList and (self.update_cdr_switch or linelist_mode == 'all'):
                 s = 0
                 if len(central_depth[s] > 0):
                     sme.linelist._lines.loc[~sme.line_ion_mask, 'central_depth'] = central_depth[s]
@@ -737,6 +737,7 @@ class Synthesizer:
                     sme.linelist._lines.loc[~sme.line_ion_mask, 'line_range_e'] = line_range[s][:, 1]
                     sme.linelist._lines.loc[sme.line_ion_mask, 'line_range_s'] = np.nan
                     sme.linelist._lines.loc[sme.line_ion_mask, 'line_range_e'] = np.nan
+                    sme.linelist.cdr_paras = np.array([sme.teff, sme.logg, sme.monh, sme.vmic])
 
             if sme.cscale_type in ["spline", "spline+mask"]:
                 sme.cscale = np.asarray(cscale)
@@ -755,6 +756,7 @@ class Synthesizer:
                 sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags.astype(float)
             else:
                 sme.nlte.flags = nlte_flags
+                sme.linelist._lines['nlte_flag'] = nlte_flags.astype(float)
 
         # Store the adaptive wavelength grid for the future
 
@@ -873,10 +875,6 @@ class Synthesizer:
         # # Assign the nlte flags
         # nlte_flags = dll.GetNLTEflags()
         # sme.nlte.flags = nlte_flags
-        # if linelist_mode == 'auto':
-        #     sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags.astype(float)
-        # else:
-        #     sme.nlte.flags = nlte_flags
 
         # Store the adaptive wavelength grid for the future
         # if it was newly created
