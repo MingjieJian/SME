@@ -9,8 +9,9 @@ import logging
 import os, re
 import platform
 import subprocess
-import sys, glob
+import sys, glob, shutil
 import zipfile
+from pathlib import Path
 from os.path import basename, dirname, exists, join, realpath
 
 import wget
@@ -137,7 +138,7 @@ def download_compile_libsme(loc=None, pysme_version='default'):
         If no existing library is found for this system
     """
 
-    github_sourcecode_url = 'https://github.com/MingjieJian/SMElib/archive/refs/tags/6.13.2.zip'
+    github_sourcecode_url = 'https://github.com/MingjieJian/SMElib/archive/refs/tags/6.13.3.zip'
     pysme_loc = join(dirname(dirname(__file__)))
     # print(pysme_loc)
     lib_sc_loc = f'{pysme_loc}/lib_sc/'
@@ -158,11 +159,30 @@ def download_compile_libsme(loc=None, pysme_version='default'):
 
     os.makedirs("../../lib", exist_ok=True)
     files = glob.glob("lib/*")
-    subprocess.run(["cp", "-t", "../../lib"] + files, check=True)
+
+    system = platform.system()
+    if system == "Linux":
+        cmd = ["cp", "-tf", "../../lib"] + files
+    elif system in ("Darwin", "FreeBSD", "OpenBSD", "NetBSD"):
+        cmd = ["cp", '-nf'] + files + ["../../lib"]
+    else:
+        raise RuntimeError(f"Unsupported platform: {system}")
+
+    subprocess.run(cmd, check=True)
 
     data_files = glob.glob("src/data/*")
     os.makedirs("../../share/libsme", exist_ok=True)
-    subprocess.run(["cp", "-t", "../../share/libsme"] + data_files, check=True)
+
+    system = platform.system()
+    if system == "Linux":
+        cmd = ["cp", "-tf", "../../share/libsme"] + data_files
+    elif system in ("Darwin", "FreeBSD", "OpenBSD", "NetBSD"):
+        cmd = ["cp", "-nf"] + data_files + ["../../share/libsme"]
+    else:
+        raise RuntimeError(f"Unsupported platform: {system}")
+
+    subprocess.run(cmd, check=True)
+
     os.chdir(cwd)
 
     subprocess.run(["rm", "-r", lib_sc_loc], check=True)
