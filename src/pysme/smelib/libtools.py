@@ -126,7 +126,7 @@ def download_libsme(loc=None, pysme_version='default'):
             ["install_name_tool", "-id", fname, fname], capture_output=True, check=True
         )
 
-def download_compile_smelib(tag: str | None = None, outdir: str = ".") -> str:
+def download_compile_smelib(tag: str | None = None, outdir: str = f'{str(Path.home())}/.sme/SMElib') -> str:
     """
     Download and compile a specified versio of SMElib; if tag=None then download the latest.
 
