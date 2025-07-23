@@ -1,16 +1,17 @@
-Quickstart
-==========
+# Quickstart
+
+## SME Structure
 
 The first step in each SME project is to create an SME structure
-    >>> from pysme.sme import SME_Structure as SME_Struct
+
+```py    
+from pysme.sme import SME_Structure
+```
 
 This can be done in done in a few different ways:
-    * load an existing SME save file (from Python or IDL)
-        >>> sme = SME_Struct.load("sme.inp")
-    * load an .ech file spectrum
-        >>> sme = SME_Struct.load("obs.ech")
-    * assign values manually
-        >>> sme = SME_Struct()
+- load an existing SME save file (from Python or IDL): `sme = SME_Structure.load("sme.inp")`
+- load an .ech file spectrum: `sme = SME_Structure.load("obs.ech")`
+- assign values manually: `sme = SME_Structure()`
 
 Either way one has to make sure that a few essential properties are set in the object, those are:
     * Stellar parameters (teff, logg, monh, abund)

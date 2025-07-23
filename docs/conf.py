@@ -22,14 +22,14 @@ sys.path.insert(0, src_dir + "/src")
 
 # -- Project information -----------------------------------------------------
 
-project = "SME"
-copyright = "2025, Jeff Valenti, Nikolai Piskunov, Ansgar Wehrhahn, Mingjie Jian"
-author = "Jeff Valenti, Nikolai Piskunov, Ansgar Wehrhahn, Mingjie Jian"
+project = "PySME"
+copyright = "2025, Jeff Valenti, Nikolai Piskunov, Mingjie Jian, Ansgar Wehrhahn"
+author = "Jeff Valenti, Nikolai Piskunov, Mingjie Jian, Ansgar Wehrhahn"
 
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "0.1.1"
+release = "0.4.198"
 
 
 # -- General configuration ---------------------------------------------------
@@ -49,7 +49,13 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
-    "sphinx.ext.napoleon"
+    "sphinx.ext.napoleon",
+    "sphinx_math_dollar"
+]
+
+myst_enable_extensions =[
+    'strikethrough',
+    'fieldlist'
 ]
 
 autodoc_member_order = "groupwise"
@@ -104,6 +110,14 @@ html_theme = "sphinx_book_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+html_logo = "_static/pysme_logo-light.png"   # 路径相对 docs/
+html_theme_options = {
+   "logo": {
+      "image_light": "_static/pysme_logo-light.png",
+      "image_dark": "_static/pysme_logo-dark.png",
+   }
+}
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

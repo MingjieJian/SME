@@ -13,26 +13,87 @@ from .persistence import IPersist
 
 logger = logging.getLogger(__name__)
 
-_citation_asplund2021 = r"""
-@ARTICLE{2021A&A...653A.141A,
-       author = {{Asplund}, M. and {Amarsi}, A.~M. and {Grevesse}, N.},
-        title = "{The chemical make-up of the Sun: A 2020 vision}",
-      journal = {\aap},
-     keywords = {Sun: abundances, Sun: photosphere, Sun: atmosphere, line: formation, meteorites, meteors, meteoroids, Sun: helioseismology, Astrophysics - Solar and Stellar Astrophysics, Astrophysics - Earth and Planetary Astrophysics},
-         year = 2021,
-        month = sep,
-       volume = {653},
-          eid = {A141},
-        pages = {A141},
-          doi = {10.1051/0004-6361/202140445},
-archivePrefix = {arXiv},
-       eprint = {2105.01661},
- primaryClass = {astro-ph.SR},
-       adsurl = {https://ui.adsabs.harvard.edu/abs/2021A&A...653A.141A},
+_citation_anders1989 = r"""
+@ARTICLE{1989GeCoA..53..197A,
+       author = {{Anders}, E. and {Grevesse}, N.},
+        title = "{Abundances of the elements: Meteoritic and solar}",
+      journal = {\gca},
+     keywords = {Abundance, Chemical Analysis, Chondrites, Meteoritic Composition, Photosphere, Solar Corona, Energetic Particles, Isotopes, Solar Wind, METEORITES, ABUNDANCE, SAMPLES, METEORITE, CI CHONDRITES, SUN, CORONA, PHOTOSPHERE, REVIEW, ELEMENTS, FRACTIONATION, SOLAR SYSTEM, NUCLIDES, SOLAR WIND, CHARGED PARTICLES, RARE GASES, REFRACTORY ELEMENTS, COMETS, SIDEROPHILES, VOLATILES, NUCLEOSYNTHESIS, HALLEY, COMPARISONS},
+         year = 1989,
+        month = jan,
+       volume = {53},
+       number = {1},
+        pages = {197-214},
+          doi = {10.1016/0016-7037(89)90286-X},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/1989GeCoA..53..197A},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 """
 
+_citation_grevesse1996 = r"""
+@INPROCEEDINGS{1996ASPC...99..117G,
+       author = {{Grevesse}, N. and {Noels}, A. and {Sauval}, A.~J.},
+        title = "{Standard Abundances}",
+    booktitle = {Cosmic Abundances},
+         year = 1996,
+       editor = {{Holt}, Stephen S. and {Sonneborn}, George},
+       series = {Astronomical Society of the Pacific Conference Series},
+       volume = {99},
+        month = jan,
+        pages = {117},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/1996ASPC...99..117G},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+"""
+
+_citation_grevesse1998 = r"""
+@ARTICLE{1998SSRv...85..161G,
+       author = {{Grevesse}, N. and {Sauval}, A.~J.},
+        title = "{Standard Solar Composition}",
+      journal = {\ssr},
+     keywords = {Sun: abundances, Meteorites: abundances, Solar spectroscopy},
+         year = 1998,
+        month = may,
+       volume = {85},
+        pages = {161-174},
+          doi = {10.1023/A:1005161325181},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/1998SSRv...85..161G},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+"""
+
+_citation_asplund2005 = r"""
+@INPROCEEDINGS{2005ASPC..336...25A,
+       author = {{Asplund}, M. and {Grevesse}, N. and {Sauval}, A.~J.},
+        title = "{The Solar Chemical Composition}",
+    booktitle = {Cosmic Abundances as Records of Stellar Evolution and Nucleosynthesis},
+         year = 2005,
+       editor = {{Barnes}, III, Thomas G. and {Bash}, Frank N.},
+       series = {Astronomical Society of the Pacific Conference Series},
+       volume = {336},
+        month = sep,
+        pages = {25},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2005ASPC..336...25A},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+"""
+
+_citation_grevesse2007 = r"""
+@ARTICLE{2007SSRv..130..105G,
+       author = {{Grevesse}, N. and {Asplund}, M. and {Sauval}, A.~J.},
+        title = "{The Solar Chemical Composition}",
+      journal = {\ssr},
+     keywords = {Sun: abundances, photosphere, corona},
+         year = 2007,
+        month = jun,
+       volume = {130},
+       number = {1-4},
+        pages = {105-114},
+          doi = {10.1007/s11214-007-9173-7},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2007SSRv..130..105G},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+"""
 
 _citation_asplund2009 = r"""
 @ARTICLE{2009ARA&A..47..481A,
@@ -55,20 +116,23 @@ _citation_asplund2009 = r"""
 }
 """
 
-_citation_grevesse2007 = r"""
-@ARTICLE{2007SSRv..130..105G,
-    author = {{Grevesse}, N. and {Asplund}, M. and {Sauval}, A.~J.},
-    title = "{The Solar Chemical Composition}",
-    journal = {\ssr},
-    keywords = {Sun: abundances, photosphere, corona},
-    year = "2007",
-    month = "Jun",
-    volume = {130},
-    number = {1-4},
-    pages = {105-114},
-    doi = {10.1007/s11214-007-9173-7},
-    adsurl = {https://ui.adsabs.harvard.edu/abs/2007SSRv..130..105G},
-    adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+_citation_asplund2021 = r"""
+@ARTICLE{2021A&A...653A.141A,
+       author = {{Asplund}, M. and {Amarsi}, A.~M. and {Grevesse}, N.},
+        title = "{The chemical make-up of the Sun: A 2020 vision}",
+      journal = {\aap},
+     keywords = {Sun: abundances, Sun: photosphere, Sun: atmosphere, line: formation, meteorites, meteors, meteoroids, Sun: helioseismology, Astrophysics - Solar and Stellar Astrophysics, Astrophysics - Earth and Planetary Astrophysics},
+         year = 2021,
+        month = sep,
+       volume = {653},
+          eid = {A141},
+        pages = {A141},
+          doi = {10.1051/0004-6361/202140445},
+archivePrefix = {arXiv},
+       eprint = {2105.01661},
+ primaryClass = {astro-ph.SR},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2021A&A...653A.141A},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 """
 
@@ -88,6 +152,28 @@ _citation_lodders2003 = r"""
     adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 """
+
+_citation_lodders2010 = r"""
+@INPROCEEDINGS{2010ASSP...16..379L,
+       author = {{Lodders}, Katharina},
+        title = "{Solar System Abundances of the Elements}",
+     keywords = {Physics, Astrophysics - Solar and Stellar Astrophysics, Astrophysics - Earth and Planetary Astrophysics},
+    booktitle = {Principles and Perspectives in Cosmochemistry},
+         year = 2010,
+       editor = {{Goswami}, Aruna and {Reddy}, B. Eswar},
+       series = {Astrophysics and Space Science Proceedings},
+       volume = {16},
+        month = jan,
+        pages = {379},
+          doi = {10.1007/978-3-642-10352-0_8},
+archivePrefix = {arXiv},
+       eprint = {1010.2746},
+ primaryClass = {astro-ph.SR},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2010ASSP...16..379L},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+"""
+
 
 _citation_atomic_weights = r"""
 @article{loss2003atomic,
@@ -149,23 +235,95 @@ _atom_weight = (
     232.0381, 231.03588, 238.02891, 237.05, 244.06, 243.06, 247.07, 247.07,
     251.08, 252.08,)
 
-# Asplund, Grevesse, Sauval, Scott (2009,  Annual Review of Astronomy
-# and Astrophysics, 47, 481)
-_asplund2021 = (
-    12.00, 10.914,
-    0.96,  1.38,  2.70,  8.46,  7.83,  8.69,  4.40,  8.06,
-    6.22,  7.55,  6.43,  7.51,  5.41,  7.12,  5.31,  6.38,
-    5.07,  6.30,  3.14,  4.97,  3.90,  5.62,  5.42,  7.46,
-    4.94,  6.20,  4.18,  4.56,  3.02,  3.62,  2.30,  3.34,
-    2.54,  3.12,  2.32,  2.83,  2.21,  2.59,  1.47,  1.88,
-    None,  1.75,  0.78,  1.57,  0.96,  1.71,  0.80,  2.02,
-    1.01,  2.18,  1.55,  2.22,  1.08,  2.17,  1.11,  1.58,
-    0.75,  1.42,  None,  0.95,  0.52,  1.08,  0.31,  1.10,
-    0.48,  0.93,  0.10,  0.85,  0.10,  0.85,  -0.15,  0.79,
-    0.26,  1.35,  1.32,  1.61,  0.91,  1.17,  0.92,  1.95,
-    0.65,  None,  None,  None,  None,  None,  None,  0.03,
-    None,  -0.54,  None,  None,  None,  None,  None,  None,
-    None,)
+# Anders, Grevesse, 1989, GeCo Acta  53, 197
+_anders1989 = (
+    12.00, 10.99,
+    1.16, 1.15, 2.60, 8.56, 8.05, 8.93, 4.56, 8.09,
+    6.33, 7.58, 6.47, 7.55, 5.45, 7.21, 5.50, 6.56,
+    5.12, 6.36, 3.10, 4.99, 4.00, 5.67, 5.39, 7.67,
+    4.92, 6.25, 4.21, 4.60, 2.88, 3.41, None, None,
+    None, None, 2.60, 2.90, 2.24, 2.60, 1.42, 1.92,
+    None, 1.84, 1.12, 1.69, 0.94, 1.86, 1.66, 2.00,
+    1.00, None, None, None, None, 2.13, 1.22, 1.55,
+    0.71, 1.50, None, 1.00, 0.51, 1.12, -0.10, 1.10,
+    0.26, 0.93, 0.00, 1.08, 0.76, 0.88, None, 1.11,
+    None, 1.45, 1.35, 1.80, 1.01, None, 0.90, 1.85,
+    None, None, None, None, None, None, None, 0.12,
+    None, None, None, None, None, None, None, None,
+    None,
+)
+
+# Grevesse, Noels, Sauval, 1996, ASPC 99, 177
+_grevesse1996 = (
+    12.00, 10.99,
+    1.16, 1.15, 2.60, 8.55, 7.97, 8.87, 4.56, 8.08,
+    6.33, 7.58, 6.47, 7.55, 5.45, 7.33, 5.50, 6.52,
+    5.12, 6.36, 3.17, 5.02, 4.00, 5.67, 5.39, 7.50,
+    4.92, 6.25, 4.21, 4.60, 2.88, 3.41, None, None,
+    None, None, 2.60, 2.97, 2.24, 2.60, 1.42, 1.92,
+    None, 1.84, 1.12, 1.69, 0.94, 1.77, 1.66, 2.00,
+    1.00, None, None, None, None, 2.13, 1.17, 1.58,
+    0.71, 1.50, None, 1.01, 0.51, 1.12, -0.10, 1.14,
+    0.26, 0.93, 0.00, 1.08, 0.76, 0.88, None, 1.11,
+    None, 1.45, 1.35, 1.80, 1.01, None, 0.90, 1.95,
+    None, None, None, None, None, None, None, None,
+    None, None, None, None, None, None, None, None,
+    None,
+)
+
+# Grevesse, Sauval, 1998, SSR 85, 161
+_grevesse1998 = (
+    12.00, 10.93,
+    1.10, 1.40, 2.55, 8.56, 7.92, 8.83, 4.56, 8.08,
+    6.33, 7.58, 6.47, 7.55, 5.45, 7.33, 5.50, 6.40,
+    5.12, 6.36, 3.17, 5.02, 4.00, 5.67, 5.39, 7.50,
+    4.92, 6.25, 4.21, 4.60, 2.88, 3.41, None, None,
+    None, None, 2.60, 2.97, 2.24, 2.60, 1.42, 1.92,
+    None, 1.84, 1.12, 1.69, 0.94, 1.77, 1.66, 2.00,
+    1.00, None, None, None, None, 2.13, 1.17, 1.58,
+    0.71, 1.50, None, 1.01, 0.51, 1.12, -0.10, 1.14,
+    0.26, 0.93, 0.00, 1.08, 0.06, 0.88, None, 1.11,
+    None, 1.45, 1.35, 1.80, 1.01, None, 0.90, 1.95,
+    None, None, None, None, None, None, None, None,
+    None, None, None, None, None, None, None, None,
+    None,
+)
+
+# Asplund, Grevesse, Sauval, 2005, ASPC 336, 252
+_asplund2005 = (
+    12.00, 10.93,
+    1.05, 1.38, 2.70, 8.39, 7.78, 8.66, 4.56, 7.84,
+    6.17, 7.53, 6.37, 7.51, 5.36, 7.14, 5.50, 6.18,
+    5.08, 6.31, 3.05, 4.90, 4.00, 5.64, 5.39, 7.45,
+    4.92, 6.23, 4.21, 4.60, 2.88, 3.58, None, None,
+    None, 3.28, 2.60, 2.92, 2.21, 2.59, 1.42, 1.92,
+    None, 1.84, 1.12, 1.69, 0.94, 1.77, 1.60, 2.00,
+    1.00, None, None, 2.27, None, 2.17, 1.13, 1.58,
+    0.71, 1.45, None, 1.01, 0.52, 1.12, 0.28, 1.14,
+    0.51, 0.93, 0.00, 1.08, 0.06, 0.88, None, 1.11,
+    None, 1.45, 1.38, None, 1.01, None, 0.90, 2.00,
+    None, None, None, None, None, None, None, None,
+    None, None, None, None, None, None, None, None,
+    None,
+)
+
+# Grevesse, Asplund, Sauval (2007, Space Science Review, 130, 105)
+_grevesse2007 = (
+    12.00, 10.93,
+    1.05, 1.38, 2.70, 8.39, 7.78, 8.66, 4.56, 7.84,
+    6.17, 7.53, 6.37, 7.51, 5.36, 7.14, 5.50, 6.18,
+    5.08, 6.31, 3.17, 4.90, 4.00, 5.64, 5.39, 7.45,
+    4.92, 6.23, 4.21, 4.60, 2.88, 3.58, 2.29, 3.33,
+    2.56, 3.25, 2.60, 2.92, 2.21, 2.58, 1.42, 1.92,
+    None, 1.84, 1.12, 1.66, 0.94, 1.77, 1.60, 2.00,
+    1.00, 2.19, 1.51, 2.24, 1.07, 2.17, 1.13, 1.70,
+    0.58, 1.45, None, 1.00, 0.52, 1.11, 0.28, 1.14,
+    0.51, 0.93, 0.00, 1.08, 0.06, 0.88, -0.17, 1.11,
+    0.23, 1.25, 1.38, 1.64, 1.01, 1.13, 0.90, 2.00,
+    0.65, None, None, None, None, None, None, 0.06,
+    None, -0.52, None, None, None, None, None, None,
+    None,
+    )
 
 # Asplund, Grevesse, Sauval, Scott (2009,  Annual Review of Astronomy
 # and Astrophysics, 47, 481)
@@ -183,24 +341,27 @@ _asplund2009 = (
     0.26,  1.40,  1.38,  1.62,  0.92,  1.17,  0.90,  1.75,
     0.65,  None,  None,  None,  None,  None,  None,  0.02,
     None,  -0.54,  None,  None,  None,  None,  None,  None,
-    None,)
+    None,
+    )
 
-# Grevesse, Asplund, Sauval (2007, Space Science Review, 130, 105)
-_grevesse2007 = (
-    12.00, 10.93,
-    1.05, 1.38, 2.70, 8.39, 7.78, 8.66, 4.56, 7.84,
-    6.17, 7.53, 6.37, 7.51, 5.36, 7.14, 5.50, 6.18,
-    5.08, 6.31, 3.17, 4.90, 4.00, 5.64, 5.39, 7.45,
-    4.92, 6.23, 4.21, 4.60, 2.88, 3.58, 2.29, 3.33,
-    2.56, 3.25, 2.60, 2.92, 2.21, 2.58, 1.42, 1.92,
-    None, 1.84, 1.12, 1.66, 0.94, 1.77, 1.60, 2.00,
-    1.00, 2.19, 1.51, 2.24, 1.07, 2.17, 1.13, 1.70,
-    0.58, 1.45, None, 1.00, 0.52, 1.11, 0.28, 1.14,
-    0.51, 0.93, 0.00, 1.08, 0.06, 0.88, -0.17, 1.11,
-    0.23, 1.25, 1.38, 1.64, 1.01, 1.13, 0.90, 2.00,
-    0.65, None, None, None, None, None, None, 0.06,
-    None, -0.52, None, None, None, None, None, None,
-    None,)
+# Asplund, Grevesse, Sauval, Scott (2009,  Annual Review of Astronomy
+# and Astrophysics, 47, 481)
+_asplund2021 = (
+    12.00, 10.914,
+    0.96,  1.38,  2.70,  8.46,  7.83,  8.69,  4.40,  8.06,
+    6.22,  7.55,  6.43,  7.51,  5.41,  7.12,  5.31,  6.38,
+    5.07,  6.30,  3.14,  4.97,  3.90,  5.62,  5.42,  7.46,
+    4.94,  6.20,  4.18,  4.56,  3.02,  3.62,  2.30,  3.34,
+    2.54,  3.12,  2.32,  2.83,  2.21,  2.59,  1.47,  1.88,
+    None,  1.75,  0.78,  1.57,  0.96,  1.71,  0.80,  2.02,
+    1.01,  2.18,  1.55,  2.22,  1.08,  2.17,  1.11,  1.58,
+    0.75,  1.42,  None,  0.95,  0.52,  1.08,  0.31,  1.10,
+    0.48,  0.93,  0.10,  0.85,  0.10,  0.85,  -0.15,  0.79,
+    0.26,  1.35,  1.32,  1.61,  0.91,  1.17,  0.92,  1.95,
+    0.65,  None,  None,  None,  None,  None,  None,  0.03,
+    None,  -0.54,  None,  None,  None,  None,  None,  None,
+    None,
+    )
 
 # Lodders 2003 (ApJ, 591, 1220)
 _lodders2003 = (
@@ -217,8 +378,26 @@ _lodders2003 = (
     1.35, 1.67, 0.72, 1.16, 0.81, 2.05, 0.68, 0.09,
     None, -0.49, None, None, None, None, None, None,
     None, None, None, None, None, None, None, None,
-    None,)
-# fmt: on
+    None,
+    )
+
+# Lodders 2010, ASSP 16, 379
+_lodders2010 = (
+    12.00, 10.93,
+    3.28, 1.32, 2.81, 8.39, 7.86, 8.73, 4.44, 8.05,
+    6.29, 7.54, 6.46, 7.53, 5.45, 7.16, 5.25, 6.50,
+    5.11, 6.31, 3.07, 4.93, 3.99, 5.65, 5.50, 7.46,
+    4.90, 6.22, 4.27, 4.65, 3.10, 3.59, 2.32, 3.36,
+    2.56, 3.28, 2.38, 2.90, 2.20, 2.57, 1.42, 1.94,
+    None, 1.78, 1.10, 1.67, 1.22, 1.73, 0.78, 2.09,
+    1.03, 2.20, 1.57, 2.27, 1.10, 2.18, 1.19, 1.60,
+    0.77, 1.47, None, 0.96, 0.53, 1.09, 0.34, 1.14,
+    0.49, 0.95, 0.14, 0.94, 0.11, 0.73, -0.14, 0.67,
+    0.28, 1.37, 1.36, 1.64, 0.82, 1.19, 0.79, 2.06,
+    0.67, None, None, None, None, None, None, 0.08,
+    None, -0.52, None, None, None, None, None, None,
+    None,
+)
 
 
 class Abund(IPersist):
@@ -501,18 +680,33 @@ class Abund(IPersist):
         """
         self.type = "H=12"
         self.citation_info = _citation_atomic_weights + "\n"
-        if pattern_name.lower() in ["asplund2009"]:
+        if pattern_name.lower() in ["anders1989"]:
+            self._pattern = np.array(_anders1989, dtype=float)
+            self.citation_info += _citation_anders1989
+        elif pattern_name.lower() in ["grevesse1996"]:
+            self._pattern = np.array(_grevesse1996, dtype=float)
+            self.citation_info += _citation_grevesse1996
+        elif pattern_name.lower() in ["grevesse1998"]:
+            self._pattern = np.array(_grevesse1998, dtype=float)
+            self.citation_info += _citation_grevesse1998
+        elif pattern_name.lower() in ["asplund2005"]:
+            self._pattern = np.array(_asplund2005, dtype=float)
+            self.citation_info += _citation_asplund2005
+        elif pattern_name.lower() in ["grevesse2007", "solar"]:
+            self._pattern = np.array(_grevesse2007, dtype=float)
+            self.citation_info += _citation_grevesse2007
+        elif pattern_name.lower() in ["asplund2009"]:
             self._pattern = np.array(_asplund2009, dtype=float)
             self.citation_info += _citation_asplund2009
         elif pattern_name.lower() in ["asplund2021"]:
             self._pattern = np.array(_asplund2021, dtype=float)
             self.citation_info += _citation_asplund2021
-        elif pattern_name.lower() in ["grevesse2007", "solar"]:
-            self._pattern = np.array(_grevesse2007, dtype=float)
-            self.citation_info += _citation_grevesse2007
         elif pattern_name.lower() == "lodders2003":
             self._pattern = np.array(_lodders2003, dtype=float)
             self.citation_info += _citation_lodders2003
+        elif pattern_name.lower() == "lodders2010":
+            self._pattern = np.array(_lodders2010, dtype=float)
+            self.citation_info += _citation_lodders2010
         elif pattern_name.lower() == "empty":
             self._pattern = self.empty_pattern()
         else:

@@ -61,7 +61,7 @@ VALD integration
 ----------------
 
 PySME is designed to be used in combination with
-VALD3 (http://vald.astro.uu.se/). The easiest way to
+VALD3 (https://vald.astro.uu.se/). The easiest way to
 get a linelist into PySME is therefore to use VALD
 extract stellar, as that can be directly imported
 using the ValdFile class.

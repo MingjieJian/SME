@@ -623,3 +623,19 @@ class SME_DLL:
         """
         nlte_flags = _smelib.GetNLTEflags()
         return nlte_flags.astype(bool)
+
+    def GetContributionfunction(self, mu, wave, nwmax=400000, long_continuum=True):
+        """Get the contribution function for a wavelength grid.
+
+        Returns
+        -------
+
+        """
+        long_continuum_val = 1 if long_continuum else 0
+
+        res = _smelib.ContributionFunctions(mu, wave, nwmax, long_continuum_val)
+        table, ctable = res
+        if long_continuum:
+            return table, ctable
+        else:
+            return table

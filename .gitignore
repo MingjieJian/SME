@@ -124,7 +124,6 @@ __cache__/**
 *.sav
 *.fits
 *.json
-*.png
 
 # Library files
 src/pysme/share/
@@ -164,3 +163,5 @@ paper/*.html
 # For local testing
 local/
 atmo_ml/
+
+src/pysme/lib

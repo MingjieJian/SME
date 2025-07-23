@@ -9,16 +9,27 @@ import logging
 import os, re
 import platform
 import subprocess
-import sys
+import sys, glob, shutil
 import zipfile
+from pathlib import Path
 from os.path import basename, dirname, exists, join, realpath
+
+import requests, os, sys, subprocess
+import zipfile
+from pathlib import Path
+import shutil
 
 import wget
 
 logger = logging.getLogger(__name__)
 
+smelib_releases = {
+    "default":  "latest/download",
+    "0.4.198":  "download/v6.0.6",
+    "0.4.199":  "download/v6.0.6",          
+}
 
-def download_libsme(loc=None):
+def download_libsme(loc=None, pysme_version='default'):
     """
     Download the SME library and the necessary datafiles
 
@@ -33,10 +44,19 @@ def download_libsme(loc=None):
     KeyError
         If no existing library is found for this system
     """
+
+    pysme_version = pysme_version.split('+')[0]
+    release_subpath = smelib_releases.get(
+        pysme_version, smelib_releases["default"]
+    )
+
     if loc is None:
         loc = dirname(dirname(get_full_libfile()))
 
     # Download compiled library from github releases
+    github_releases_url = (
+        f"https://github.com/MingjieJian/SMElib/releases/{release_subpath}"
+    )
     print("Downloading and installing the latest libsme version for this system")
     aliases = {
         "Linux": "manylinux2014_x86_64",
@@ -72,7 +92,6 @@ def download_libsme(loc=None):
                 use_version = match.group(1)
             system += f'-arm-M{use_version}' 
 
-    github_releases_url = "https://github.com/MingjieJian/SMElib/releases/latest/download"
     github_releases_fname = "{system}-gfortran.zip".format(system=system)
     url = github_releases_url + "/" + github_releases_fname
     fname = join(loc, github_releases_fname)
@@ -91,9 +110,6 @@ def download_libsme(loc=None):
 
     print("Extracting file")
     zipfile.ZipFile(fname).extractall(loc)
-    lib_dir = join(loc, get_lib_directory())
-    print(lib_dir)
-    print(f"Current files in lib folder: {os.listdir(lib_dir) if exists(lib_dir) else 'lib directory not found'}")
 
     try:
         os.remove(fname)
@@ -109,6 +125,100 @@ def download_libsme(loc=None):
         subprocess.run(
             ["install_name_tool", "-id", fname, fname], capture_output=True, check=True
         )
+
+def download_compile_smelib(tag: str | None = None, outdir: str = f'{str(Path.home())}/.sme/SMElib') -> str:
+    """
+    Download and compile a specified versio of SMElib; if tag=None then download the latest.
+
+    Example: tag: 6.13.3
+    """
+    def _github_get(url):
+        hdrs = {"Accept": "application/vnd.github+json"}
+        r = requests.get(url, headers=hdrs, timeout=30)
+        r.raise_for_status()
+        return r.json()
+    
+    GITHUB_API = "https://api.github.com"
+    OWNER = "MingjieJian"
+    REPO  = "SMElib"
+
+    if not Path(outdir).exists():
+        Path(outdir).mkdir(parents=True, exist_ok=True)
+
+    if tag:
+        meta = _github_get(f"{GITHUB_API}/repos/{OWNER}/{REPO}/releases/tags/{tag}")
+    else:
+        meta = _github_get(f"{GITHUB_API}/repos/{OWNER}/{REPO}/releases/latest")
+        tag = meta["tag_name"].replace('v', '')
+
+    zip_url = meta["zipball_url"]
+    local_zip = os.path.join(outdir, f"SMElib-{tag}.zip")
+    extract_dir = os.path.join(outdir, f"SMElib-{tag}")
+
+    if Path(local_zip).exists():
+        Path(local_zip).unlink()
+    if Path(extract_dir).exists():
+        shutil.rmtree(extract_dir)
+
+    logger.info(f'Downloading SMElib verion {tag} from {zip_url}, saving it as {local_zip}')
+    wget.download(zip_url, local_zip)
+
+    logger.info(f'Extracting {local_zip} to {extract_dir}')
+    zipfile.ZipFile(local_zip).extractall(extract_dir)
+
+    top = Path(extract_dir).resolve()
+    
+    # Find the only one subfolder
+    subdirs = [p for p in top.iterdir() if p.is_dir()]
+    if len(subdirs) != 1:
+        raise RuntimeError(f"Expected to find 1 subfolder, found {len(subdirs)}: {subdirs}")
+    
+    sub = subdirs[0]
+    
+    for item in sub.iterdir():
+        target = top / item.name
+        if target.exists():
+            if target.is_dir():
+                shutil.rmtree(target)
+            else:
+                target.unlink()
+        shutil.move(str(item), top)
+
+    logger.info('Compiling SMElib ...')
+    cwd = Path.cwd()
+    os.chdir(extract_dir)
+    subprocess.run(["chmod", "755", "./compile_smelib.sh"], check=True)
+    with open("smelib_compile.log", "w") as f:
+        subprocess.run(["./compile_smelib.sh"], stdout=f, stderr=subprocess.STDOUT, check=True)
+    # subprocess.run(["./compile_smelib.sh", ">", "smelib_compile.log", "2>&1"], check=True)
+    os.chdir(cwd)
+    logger.info('Compilation finished.')
+
+    return extract_dir
+
+def _safe_symlink(src: Path | str, dst: Path | str) -> None:
+    """Create **dst → src** symbolic link, forcibly replacing any pre-existing
+    file, directory, or symlink at *dst*.
+    """
+    src = Path(src).resolve()
+    dst = Path(dst)
+
+    if dst.is_symlink() or dst.exists():
+        if dst.is_symlink() or dst.is_file():
+            dst.unlink()
+        else:  # directory
+            shutil.rmtree(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.symlink_to(src)
+
+def link_interface_smelib(loc):
+    '''
+    This funciton does not check if the library exists or not.
+    '''
+
+    pysme_dir = dirname(dirname(__file__))
+    _safe_symlink(Path(f"{loc}/lib").resolve(), Path(f"{pysme_dir}/lib"))
+    _safe_symlink(Path(f"{loc}/src/data").resolve(), Path(f"{pysme_dir}/share/libsme"))
 
 def compile_interface():
     """

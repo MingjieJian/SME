@@ -8,6 +8,9 @@ from shutil import copy
 
 from setuptools import setup
 
+# 设置环境变量，标记为安装模式
+os.environ['SETUPTOOLS_INSTALL_MODE'] = '1'
+
 import versioneer
 
 # Create folder structure for config files
@@ -67,8 +70,8 @@ setup(
     description="Spectroscopy Made Easy",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author="Ansgar Wehrhahn, Jeff A. Valenti",
-    author_email="ansgar.wehrhahn@physics.uu.se, valenti@stsci.edu",
+    author="Mingjie Jian, Ansgar Wehrhahn, Jeff A. Valenti",
+    author_email="mingjie.jian@astro.su.se, valenti@stsci.edu",
     packages=[
         "pysme",
         "pysme.gui",
@@ -91,12 +94,13 @@ setup(
         "emcee",
         "pybtex",
         "flex-format",
+        "matplotlib"
     ],
-    url="https://github.com/AWehrhahn/SME/",
+    url="https://github.com/MingjieJian/SME/",
     project_urls={
-        "Bug Tracker": "https://github.com/AWehrhahn/SME/issues",
+        "Bug Tracker": "https://github.com/MingjieJian/SME/issues",
         "Documentation": "https://pysme-astro.readthedocs.io/en/latest/",
-        "Source Code": "https://github.com/AWehrhahn/SME/",
+        "Source Code": "https://github.com/MingjieJian/SME/",
     },
     classifiers=[
         "Programming Language :: Python :: 3",

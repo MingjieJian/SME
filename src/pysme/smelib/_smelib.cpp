@@ -1,6 +1,7 @@
 #define PY_SSIZE_T_CLEAN
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <Python.h>
+#include <numpy/ndarraytypes.h>
 #include <numpy/arrayobject.h>
 
 // Header of the SME library
@@ -174,7 +175,6 @@ static PyObject *smelib_InputLineList(PyObject *self, PyObject *args)
     IDL_STRING *species = NULL;
     char *species_data = NULL;
     double *linelist = NULL;
-    PyArray_Descr *dtype = NULL;
 
     if (!PyArg_ParseTuple(args, "OO", &species_obj, &linelist_obj))
         return NULL;
@@ -202,8 +202,7 @@ static PyObject *smelib_InputLineList(PyObject *self, PyObject *args)
     }
     // Get sizes
     nlines = PyArray_DIM(species_array, 0);
-    dtype = PyArray_DESCR(species_array);
-    nchar = dtype->elsize;
+    nchar = PyArray_ITEMSIZE(species_array);
 
     if (PyArray_DIM(linelist_array, 0) != 8)
     {
@@ -295,7 +294,6 @@ static PyObject *smelib_UpdateLineList(PyObject *self, PyObject *args)
     PyObject *linelist_obj = NULL, *species_obj = NULL, *index_obj = NULL;
     PyArrayObject *linelist_array = NULL, *species_array = NULL, *index_array = NULL;
     char *species_data = NULL;
-    PyArray_Descr *dtype = NULL;
 
     if (!PyArg_ParseTuple(args, "OOO", &species_obj, &linelist_obj, &index_obj))
         return NULL;
@@ -329,8 +327,7 @@ static PyObject *smelib_UpdateLineList(PyObject *self, PyObject *args)
 
     // Get sizes
     nlines = PyArray_DIM(species_array, 0);
-    dtype = PyArray_DESCR(species_array);
-    nchar = dtype->elsize;
+    nchar = PyArray_ITEMSIZE(species_array);
 
     // Check sizes
     if (PyArray_DIM(linelist_array, 0) != 8)
@@ -1263,6 +1260,105 @@ static PyObject *smelib_GetNLTEflags(PyObject *self, PyObject *args)
     return (PyObject *)arr;
 }
 
+static char smelib_ContributionFunctions_docstring[] = "Compute contribution functions.";
+static PyObject *smelib_ContributionFunctions(PyObject *self, PyObject *args, PyObject *kwds)
+{
+    /* parse Python arguments here — same signature SME expects:
+       int n_mu, double *mu, int nw_avail, double acc_rt, etc. */
+    
+    const int n = 8;
+    void *args_c[n];
+    const char *result = NULL;
+    
+    /* allocate NumPy arrays for the output */
+    short nmu, keep_lineop = 1, long_continuum = 1;
+    double accrt = 1e-4, accwi = 3e-3;
+    int nw = 0, nrhox = GetNRHOX(), nwmax = 40000;
+
+    // npy_intp dims[1], dims2[2], dims3[3];
+    npy_intp dims3[3];
+
+    PyObject *mu_obj = NULL, *wave_obj = NULL;
+    PyArrayObject *mu_arr = NULL;
+    PyArrayObject *wave_arr = NULL;
+    PyArrayObject *table_arr = NULL, *ctable_arr = NULL;
+    PyObject *ret_tuple = NULL;
+
+    static const char *keywords[] = {"mu", "wave", "nwmax", "accrt", "accwi", "keep_lineop", "long_continuum", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|Oiddhh", const_cast<char **>(keywords),
+                                     &mu_obj, &wave_obj, &nwmax, &accrt, &accwi, &keep_lineop, &long_continuum))
+        return NULL;
+    
+    mu_arr = (PyArrayObject *)PyArray_FROM_OTF(mu_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+    if (mu_arr == NULL)
+        goto fail;
+
+    nmu = PyArray_DIM(mu_arr, 0);
+    
+    if (PyArray_NDIM(mu_arr) != 1)
+    {
+        PyErr_SetString(PyExc_ValueError, "Expected mu array of ndim == 1");
+        goto fail;
+    }
+
+    if (wave_obj != NULL && wave_obj != Py_None)
+    {
+        // Reuse wavelength grid
+        wave_arr = (PyArrayObject *)PyArray_FROM_OTF(wave_obj, NPY_DOUBLE, NPY_ARRAY_IN_ARRAY);
+        if (wave_arr == NULL)
+            goto fail;
+
+        if (PyArray_NDIM(wave_arr) != 1)
+        {
+            PyErr_SetString(PyExc_ValueError, "Expected wavelength array of ndim == 1");
+            goto fail;
+        }
+
+        nw = PyArray_DIM(wave_arr, 0);
+        nwmax = nw;
+    }
+    else
+    {
+        goto fail;
+        // // Create a new wavelength grid
+        // nw = 0;
+        // dims[0] = nwmax;
+        // wave_arr = (PyArrayObject *)PyArray_SimpleNew(1, dims, NPY_DOUBLE);
+    }
+
+    // dims2[0] = nw;
+    // dims2[1] = nrhox;
+    dims3[0] = nwmax;
+    dims3[1] = nmu;
+    dims3[2] = nrhox;
+    table_arr = (PyArrayObject *)PyArray_SimpleNew(3, dims3, NPY_DOUBLE);
+    ctable_arr = (PyArrayObject *)PyArray_SimpleNew(3, dims3, NPY_DOUBLE);
+
+    args_c[0] = &nmu;
+    args_c[1] = PyArray_DATA(mu_arr);
+    args_c[2] = &nw;
+    args_c[3] = &nw;
+    args_c[4] = PyArray_DATA(wave_arr);
+    args_c[5] = PyArray_DATA(table_arr);
+    args_c[6] = PyArray_DATA(ctable_arr);
+    args_c[7] = &long_continuum;
+    
+    result = Contribution_functions(n, args_c);
+    if (result != NULL && result[0] != OK_response)
+    {
+        PyErr_SetString(PyExc_RuntimeError, result);
+        goto fail;
+    }
+    ret_tuple = PyTuple_New(2);
+    PyTuple_SET_ITEM(ret_tuple, 0, (PyObject *)table_arr);
+    PyTuple_SET_ITEM(ret_tuple, 1, (PyObject *)ctable_arr);
+    return ret_tuple;
+    /* return the NumPy arrays in a tuple */
+fail:
+return NULL;
+
+}
+
 static PyMethodDef module_methods[] = {
     {"LibraryVersion", smelib_LibraryVersion, METH_NOARGS, smelib_LibraryVersion_docstring},
     {"GetDataFiles", smelib_GetDataFiles, METH_NOARGS, smelib_GetDataFiles_docstring},
@@ -1291,6 +1387,7 @@ static PyMethodDef module_methods[] = {
     {"GetLineOpacity", smelib_GetLineOpacity, METH_VARARGS, smelib_GetLineOpacity_docstring},
     {"GetLineRange", smelib_GetLineRange, METH_NOARGS, smelib_GetLineRange_docstring},
     {"GetNLTEflags", smelib_GetNLTEflags, METH_NOARGS, smelib_GetNLTEflags_docstring},
+    {"ContributionFunctions", (PyCFunction)smelib_ContributionFunctions, METH_VARARGS | METH_KEYWORDS, smelib_ContributionFunctions_docstring},
     {NULL, NULL, 0, NULL}};
 
 PyMODINIT_FUNC PyInit__smelib(void)
