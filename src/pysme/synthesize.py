@@ -728,6 +728,7 @@ class Synthesizer:
                 # sme.central_depth[s] = central_depth[s]
                 # sme.line_range[s] = line_range[s]
 
+
             if passLineList and (self.update_cdr_switch or linelist_mode == 'all'):
                 s = 0
                 if len(central_depth[s] > 0):
@@ -738,6 +739,7 @@ class Synthesizer:
                     sme.linelist._lines.loc[sme.line_ion_mask, 'line_range_s'] = np.nan
                     sme.linelist._lines.loc[sme.line_ion_mask, 'line_range_e'] = np.nan
                     sme.linelist.cdr_paras = np.array([sme.teff, sme.logg, sme.monh, sme.vmic])
+
 
             if sme.cscale_type in ["spline", "spline+mask"]:
                 sme.cscale = np.asarray(cscale)
