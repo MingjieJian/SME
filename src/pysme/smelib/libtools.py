@@ -153,7 +153,7 @@ def download_compile_smelib(tag=None, outdir=f'{str(Path.home())}/.sme/SMElib'):
         tag = meta["tag_name"].replace('v', '')
 
     # zip_url = meta["zipball_url"]
-    zip_url = 'https://api.github.com/repos/MingjieJian/SMElib/zipball/6.13.5'
+    zip_url = f'https://api.github.com/repos/MingjieJian/SMElib/zipball/{tag}'
     local_zip = os.path.join(outdir, f"SMElib-{tag}.zip")
     extract_dir = os.path.join(outdir, f"SMElib-{tag}")
 

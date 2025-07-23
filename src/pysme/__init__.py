@@ -49,7 +49,7 @@ from .smelib import libtools
 libfile = libtools.get_full_libfile()
 if not os.path.exists(libfile):
     # smelib_dir = libtools.download_compile_smelib(tag='6.13.5', outdir=f'{os.path.dirname(__file__)}/lib_sc')
-    smelib_dir = libtools.download_compile_smelib(tag='6.13.5')
+    smelib_dir = libtools.download_compile_smelib(tag='6.13.6')
     libtools.link_interface_smelib(smelib_dir)
 
 try:
