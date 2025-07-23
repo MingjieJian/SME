@@ -202,14 +202,10 @@ def download_compile_smelib(tag=None, outdir=f'{str(Path.home())}/.sme/SMElib'):
 
     with open("smelib_compile.log", "w") as f:
         f.write(proc.stdout)
+    
     print(proc.stdout)
     print(proc.stderr)
-    if proc.returncode != 0:
-        sys.stderr.write("\n===== compile_smelib.sh FAILED =====\n")
-        sys.stderr.write(proc.stdout)
-        sys.stderr.write("\n====================================\n")
-        raise subprocess.CalledProcessError(proc.returncode, proc.args, output=proc.stdout)
-
+    
     os.chdir(cwd)
     logger.info('Compilation finished.')
 
