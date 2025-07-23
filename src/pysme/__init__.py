@@ -53,6 +53,8 @@ if not os.path.exists(libfile):
     libtools.link_interface_smelib(smelib_dir)
 
 print('++++++++++++++++++')
+print(os.listdir(f'~/.sme/SMElib/SMElib-6.13.7/lib'))
+print('-------------')
 print(os.listdir(f'{os.path.dirname(__file__)}/lib/'))
 print('++++++++++++++++++')
 
