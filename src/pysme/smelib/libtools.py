@@ -202,8 +202,8 @@ def download_compile_smelib(tag=None, outdir=f'{str(Path.home())}/.sme/SMElib'):
 
     with open("smelib_compile.log", "w") as f:
         f.write(proc.stdout)
-    print(sys.stderr.write(proc.stdout))
-    print(sys.stderr.write(proc.stderr))
+    print(proc.stdout)
+    print(proc.stderr)
     if proc.returncode != 0:
         sys.stderr.write("\n===== compile_smelib.sh FAILED =====\n")
         sys.stderr.write(proc.stdout)

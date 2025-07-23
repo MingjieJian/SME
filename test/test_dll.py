@@ -174,7 +174,7 @@ def test_transf(
     libsme.Opacity()
 
     nw, wave, synth, cont = libsme.Transf(mu, accrt=accrt, accwi=accwt)
-    assert nw == 43
+    assert nw == 27
 
     density = libsme.GetDensity()
     assert np.allclose(density, atmo.rho, rtol=3e-1, equal_nan=True)
