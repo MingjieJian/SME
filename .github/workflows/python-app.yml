@@ -35,6 +35,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install autoconf and gfortran (libgfortran) on macOS
+        if: matrix.runs_on != 'ubuntu-latest'
         run: |
           brew update
           brew install autoconf automake libtool gcc
