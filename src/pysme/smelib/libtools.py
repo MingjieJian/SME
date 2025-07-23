@@ -145,12 +145,12 @@ def download_compile_smelib(tag=None, outdir=f'{str(Path.home())}/.sme/SMElib'):
     if not Path(outdir).exists():
         Path(outdir).mkdir(parents=True, exist_ok=True)
 
-    if tag:
-        pass
-        # meta = _github_get(f"{GITHUB_API}/repos/{OWNER}/{REPO}/releases/tags/{tag}")
-    else:
-        meta = _github_get(f"{GITHUB_API}/repos/{OWNER}/{REPO}/releases/latest")
-        tag = meta["tag_name"].replace('v', '')
+    # if tag:
+    #     pass
+    #     # meta = _github_get(f"{GITHUB_API}/repos/{OWNER}/{REPO}/releases/tags/{tag}")
+    # else:
+    #     meta = _github_get(f"{GITHUB_API}/repos/{OWNER}/{REPO}/releases/latest")
+    #     tag = meta["tag_name"].replace('v', '')
 
     # zip_url = meta["zipball_url"]
     zip_url = f'https://api.github.com/repos/MingjieJian/SMElib/zipball/{tag}'
