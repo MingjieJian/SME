@@ -34,8 +34,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install gfortran (libgfortran) on macOS
-        if: matrix.runs_on == 'macos-13'
+      - name: Install autoconf and gfortran (libgfortran) on macOS
         run: |
           brew update
           brew install autoconf automake libtool gcc@9
