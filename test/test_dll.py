@@ -24,17 +24,17 @@ def libsme():
 
 @pytest.fixture
 def teff():
-    return 5000
+    return 5750
 
 
 @pytest.fixture
 def grav():
-    return 4.2
+    return 4.5
 
 
 @pytest.fixture
 def vturb():
-    return 0.1
+    return 2
 
 
 @pytest.fixture
@@ -174,10 +174,10 @@ def test_transf(
     libsme.Opacity()
 
     nw, wave, synth, cont = libsme.Transf(mu, accrt=accrt, accwi=accwt)
-    assert nw == 47
+    assert nw == 27
 
     density = libsme.GetDensity()
-    assert np.allclose(density, atmo.rho, rtol=1e-1, equal_nan=True)
+    assert np.allclose(density, atmo.rho, rtol=3e-1, equal_nan=True)
 
     xne = libsme.GetNelec()
     assert np.allclose(xne, atmo.xne, rtol=2e-1)

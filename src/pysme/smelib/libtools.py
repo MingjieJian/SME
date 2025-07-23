@@ -9,9 +9,15 @@ import logging
 import os, re
 import platform
 import subprocess
-import sys
+import sys, glob, shutil
 import zipfile
+from pathlib import Path
 from os.path import basename, dirname, exists, join, realpath
+
+import os, sys, subprocess
+import zipfile
+from pathlib import Path
+import shutil
 
 import wget
 
@@ -119,6 +125,119 @@ def download_libsme(loc=None, pysme_version='default'):
         subprocess.run(
             ["install_name_tool", "-id", fname, fname], capture_output=True, check=True
         )
+
+def download_compile_smelib(tag=None, outdir=f'{str(Path.home())}/.sme/SMElib'):
+    """
+    Download and compile a specified versio of SMElib; if tag=None then download the latest.
+
+    Example: tag: 6.13.3
+    """
+    # def _github_get(url):
+    #     hdrs = {"Accept": "application/vnd.github+json"}
+    #     r = requests.get(url, headers=hdrs, timeout=30)
+    #     r.raise_for_status()
+    #     return r.json()
+    
+    GITHUB_API = "https://api.github.com"
+    OWNER = "MingjieJian"
+    REPO  = "SMElib"
+
+    if not Path(outdir).exists():
+        Path(outdir).mkdir(parents=True, exist_ok=True)
+
+    # if tag:
+    #     pass
+    #     # meta = _github_get(f"{GITHUB_API}/repos/{OWNER}/{REPO}/releases/tags/{tag}")
+    # else:
+    #     meta = _github_get(f"{GITHUB_API}/repos/{OWNER}/{REPO}/releases/latest")
+    #     tag = meta["tag_name"].replace('v', '')
+
+    # zip_url = meta["zipball_url"]
+    zip_url = f'https://api.github.com/repos/MingjieJian/SMElib/zipball/{tag}'
+    local_zip = os.path.join(outdir, f"SMElib-{tag}.zip")
+    extract_dir = os.path.join(outdir, f"SMElib-{tag}")
+
+    if Path(local_zip).exists():
+        Path(local_zip).unlink()
+    if Path(extract_dir).exists():
+        shutil.rmtree(extract_dir)
+
+    logger.info(f'Downloading SMElib verion {tag} from {zip_url}, saving it as {local_zip}')
+    wget.download(zip_url, local_zip)
+
+    logger.info(f'Extracting {local_zip} to {extract_dir}')
+    zipfile.ZipFile(local_zip).extractall(extract_dir)
+
+    top = Path(extract_dir).resolve()
+    
+    # Find the only one subfolder
+    subdirs = [p for p in top.iterdir() if p.is_dir()]
+    if len(subdirs) != 1:
+        raise RuntimeError(f"Expected to find 1 subfolder, found {len(subdirs)}: {subdirs}")
+    
+    sub = subdirs[0]
+    
+    for item in sub.iterdir():
+        target = top / item.name
+        if target.exists():
+            if target.is_dir():
+                shutil.rmtree(target)
+            else:
+                target.unlink()
+        shutil.move(str(item), top)
+
+    logger.info('Compiling SMElib ...')
+    cwd = Path.cwd()
+    os.chdir(extract_dir)
+    subprocess.run(["chmod", "755", "./compile_smelib.sh"], check=True)
+    # with open("smelib_compile.log", "w") as f:
+    #     subprocess.run(["./compile_smelib.sh"], stdout=f, stderr=subprocess.STDOUT, check=True)
+
+    proc = subprocess.run(
+        ["./compile_smelib.sh"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,   # 把 stderr 合并进 stdout，方便统一处理
+        text=True                   # Python 3.7+，自动把 bytes 解码成 str
+    )
+
+    with open("smelib_compile.log", "w") as f:
+        f.write(proc.stdout)
+    print(proc.stdout)
+    print(proc.stderr)
+    if proc.returncode != 0:
+        sys.stderr.write("\n===== compile_smelib.sh FAILED =====\n")
+        sys.stderr.write(proc.stdout)
+        sys.stderr.write("\n====================================\n")
+        raise subprocess.CalledProcessError(proc.returncode, proc.args, output=proc.stdout)
+
+    os.chdir(cwd)
+    logger.info('Compilation finished.')
+
+    return extract_dir
+
+def _safe_symlink(src, dst):
+    """Create **dst → src** symbolic link, forcibly replacing any pre-existing
+    file, directory, or symlink at *dst*.
+    """
+    src = Path(src).resolve()
+    dst = Path(dst)
+
+    if dst.is_symlink() or dst.exists():
+        if dst.is_symlink() or dst.is_file():
+            dst.unlink()
+        else:  # directory
+            shutil.rmtree(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.symlink_to(src)
+
+def link_interface_smelib(loc):
+    '''
+    This funciton does not check if the library exists or not.
+    '''
+
+    pysme_dir = dirname(dirname(__file__))
+    _safe_symlink(Path(f"{loc}/lib").resolve(), Path(f"{pysme_dir}/lib"))
+    _safe_symlink(Path(f"{loc}/src/data").resolve(), Path(f"{pysme_dir}/share/libsme"))
 
 def compile_interface():
     """

@@ -8,10 +8,11 @@ __version__ = get_versions()["version"]
 del get_versions
 
 # Add output to the console
-import logging
+import logging, os
 
 import colorlog
 import tqdm
+from pathlib import Path
 
 
 class TqdmLoggingHandler(logging.Handler):
@@ -47,7 +48,16 @@ from .smelib import libtools
 
 libfile = libtools.get_full_libfile()
 if not os.path.exists(libfile):
-    libtools.download_libsme(pysme_version=__version__)
+    # smelib_dir = libtools.download_compile_smelib(tag='6.13.5', outdir=f'{os.path.dirname(__file__)}/lib_sc')
+    smelib_dir = libtools.download_compile_smelib(tag='6.13.7')
+    libtools.link_interface_smelib(smelib_dir)
+
+print('++++++++++++++++++')
+print(os.listdir(f'{str(Path.home())}/.sme/SMElib/SMElib-6.13.7/lib'))
+print(os.listdir(f'{str(Path.home())}/.sme/SMElib/SMElib-6.13.7/'))
+print('-------------')
+print(os.listdir(f'{os.path.dirname(__file__)}/lib/'))
+print('++++++++++++++++++')
 
 try:
     cdll.LoadLibrary(libfile)
