@@ -132,11 +132,11 @@ def download_compile_smelib(tag=None, outdir=f'{str(Path.home())}/.sme/SMElib'):
 
     Example: tag: 6.13.3
     """
-    def _github_get(url):
-        hdrs = {"Accept": "application/vnd.github+json"}
-        r = requests.get(url, headers=hdrs, timeout=30)
-        r.raise_for_status()
-        return r.json()
+    # def _github_get(url):
+    #     hdrs = {"Accept": "application/vnd.github+json"}
+    #     r = requests.get(url, headers=hdrs, timeout=30)
+    #     r.raise_for_status()
+    #     return r.json()
     
     GITHUB_API = "https://api.github.com"
     OWNER = "MingjieJian"
