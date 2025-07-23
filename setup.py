@@ -8,6 +8,9 @@ from shutil import copy
 
 from setuptools import setup
 
+# 设置环境变量，标记为安装模式
+os.environ['SETUPTOOLS_INSTALL_MODE'] = '1'
+
 import versioneer
 
 # Create folder structure for config files
@@ -91,6 +94,7 @@ setup(
         "emcee",
         "pybtex",
         "flex-format",
+        "matplotlib"
     ],
     url="https://github.com/MingjieJian/SME/",
     project_urls={

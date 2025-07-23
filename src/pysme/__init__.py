@@ -12,6 +12,7 @@ import logging
 
 import colorlog
 import tqdm
+from pathlib import Path
 
 
 class TqdmLoggingHandler(logging.Handler):
@@ -47,7 +48,9 @@ from .smelib import libtools
 
 libfile = libtools.get_full_libfile()
 if not os.path.exists(libfile):
-    libtools.download_compile_libsme()
+    # smelib_dir = libtools.download_compile_smelib(tag='6.13.5', outdir=f'{os.path.dirname(__file__)}/lib_sc')
+    smelib_dir = libtools.download_compile_smelib(tag='6.13.5', outdir=f'{str(Path.home())}/.sme/SMElib')
+    libtools.link_interface_smelib(smelib_dir)
 
 try:
     cdll.LoadLibrary(libfile)

@@ -14,6 +14,11 @@ import zipfile
 from pathlib import Path
 from os.path import basename, dirname, exists, join, realpath
 
+import requests, os, sys, subprocess
+import zipfile
+from pathlib import Path
+import shutil
+
 import wget
 
 logger = logging.getLogger(__name__)
@@ -121,71 +126,99 @@ def download_libsme(loc=None, pysme_version='default'):
             ["install_name_tool", "-id", fname, fname], capture_output=True, check=True
         )
 
-def download_compile_libsme(loc=None, pysme_version='default'):
+def download_compile_smelib(tag: str | None = None, outdir: str = ".") -> str:
     """
-    Download the SME library source code and the necessary datafiles, 
-        then complile the library.
+    Download and compile a specified versio of SMElib; if tag=None then download the latest.
 
-    Parameters
-    ----------
-    loc : str, optional
-        the path to the location the files should be placed,
-        by default they are placed so that PySME can find and use them
-
-    Raises
-    ------
-    KeyError
-        If no existing library is found for this system
+    Example: tag: 6.13.3
     """
+    def _github_get(url):
+        hdrs = {"Accept": "application/vnd.github+json"}
+        r = requests.get(url, headers=hdrs, timeout=30)
+        r.raise_for_status()
+        return r.json()
+    
+    GITHUB_API = "https://api.github.com"
+    OWNER = "MingjieJian"
+    REPO  = "SMElib"
 
-    github_sourcecode_url = 'https://github.com/MingjieJian/SMElib/archive/refs/tags/6.13.3.zip'
-    pysme_loc = join(dirname(dirname(__file__)))
-    # print(pysme_loc)
-    lib_sc_loc = f'{pysme_loc}/lib_sc/'
-    lib_sc_zip = f'{lib_sc_loc}/SMElib-{github_sourcecode_url.split("/")[-1]}'
-    lib_sc_current = lib_sc_zip[:-4]
+    if not Path(outdir).exists():
+        Path(outdir).mkdir(parents=True, exist_ok=True)
 
-    os.makedirs(lib_sc_loc, exist_ok=True)
-
-    if not os.path.exists(lib_sc_zip):
-        wget.download(github_sourcecode_url, out=lib_sc_loc)
-
-    zipfile.ZipFile(lib_sc_zip).extractall(lib_sc_loc)
-
-    cwd = os.getcwd()
-    os.chdir(lib_sc_current)
-    subprocess.run(["chmod", '777', "./compile_smelib.sh"])
-    subprocess.run(["./compile_smelib.sh"])
-
-    os.makedirs("../../lib", exist_ok=True)
-    files = glob.glob("lib/*")
-
-    system = platform.system()
-    if system == "Linux":
-        cmd = ["cp", "-tf", "../../lib"] + files
-    elif system in ("Darwin", "FreeBSD", "OpenBSD", "NetBSD"):
-        cmd = ["cp", '-nf'] + files + ["../../lib"]
+    if tag:
+        meta = _github_get(f"{GITHUB_API}/repos/{OWNER}/{REPO}/releases/tags/{tag}")
     else:
-        raise RuntimeError(f"Unsupported platform: {system}")
+        meta = _github_get(f"{GITHUB_API}/repos/{OWNER}/{REPO}/releases/latest")
+        tag = meta["tag_name"].replace('v', '')
 
-    subprocess.run(cmd, check=True)
+    zip_url = meta["zipball_url"]
+    local_zip = os.path.join(outdir, f"SMElib-{tag}.zip")
+    extract_dir = os.path.join(outdir, f"SMElib-{tag}")
 
-    data_files = glob.glob("src/data/*")
-    os.makedirs("../../share/libsme", exist_ok=True)
+    if Path(local_zip).exists():
+        Path(local_zip).unlink()
+    if Path(extract_dir).exists():
+        shutil.rmtree(extract_dir)
 
-    system = platform.system()
-    if system == "Linux":
-        cmd = ["cp", "-tf", "../../share/libsme"] + data_files
-    elif system in ("Darwin", "FreeBSD", "OpenBSD", "NetBSD"):
-        cmd = ["cp", "-nf"] + data_files + ["../../share/libsme"]
-    else:
-        raise RuntimeError(f"Unsupported platform: {system}")
+    logger.info(f'Downloading SMElib verion {tag} from {zip_url}, saving it as {local_zip}')
+    wget.download(zip_url, local_zip)
 
-    subprocess.run(cmd, check=True)
+    logger.info(f'Extracting {local_zip} to {extract_dir}')
+    zipfile.ZipFile(local_zip).extractall(extract_dir)
 
+    top = Path(extract_dir).resolve()
+    
+    # Find the only one subfolder
+    subdirs = [p for p in top.iterdir() if p.is_dir()]
+    if len(subdirs) != 1:
+        raise RuntimeError(f"Expected to find 1 subfolder, found {len(subdirs)}: {subdirs}")
+    
+    sub = subdirs[0]
+    
+    for item in sub.iterdir():
+        target = top / item.name
+        if target.exists():
+            if target.is_dir():
+                shutil.rmtree(target)
+            else:
+                target.unlink()
+        shutil.move(str(item), top)
+
+    logger.info('Compiling SMElib ...')
+    cwd = Path.cwd()
+    os.chdir(extract_dir)
+    subprocess.run(["chmod", "755", "./compile_smelib.sh"], check=True)
+    with open("smelib_compile.log", "w") as f:
+        subprocess.run(["./compile_smelib.sh"], stdout=f, stderr=subprocess.STDOUT, check=True)
+    # subprocess.run(["./compile_smelib.sh", ">", "smelib_compile.log", "2>&1"], check=True)
     os.chdir(cwd)
+    logger.info('Compilation finished.')
 
-    subprocess.run(["rm", "-r", lib_sc_loc], check=True)
+    return extract_dir
+
+def _safe_symlink(src: Path | str, dst: Path | str) -> None:
+    """Create **dst → src** symbolic link, forcibly replacing any pre-existing
+    file, directory, or symlink at *dst*.
+    """
+    src = Path(src).resolve()
+    dst = Path(dst)
+
+    if dst.is_symlink() or dst.exists():
+        if dst.is_symlink() or dst.is_file():
+            dst.unlink()
+        else:  # directory
+            shutil.rmtree(dst)
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.symlink_to(src)
+
+def link_interface_smelib(loc):
+    '''
+    This funciton does not check if the library exists or not.
+    '''
+
+    pysme_dir = dirname(dirname(__file__))
+    _safe_symlink(Path(f"{loc}/lib").resolve(), Path(f"{pysme_dir}/lib"))
+    _safe_symlink(Path(f"{loc}/src/data").resolve(), Path(f"{pysme_dir}/share/libsme"))
 
 def compile_interface():
     """

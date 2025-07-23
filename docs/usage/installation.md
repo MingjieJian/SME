@@ -13,10 +13,10 @@ PySME can be installed through PyPI (recommended) or from github directly.
 - `source activate pysme`
 
 ## Install 
+- Install necessary packages 
+    - `sudo apt install autoconf automake libtool gcc` (or use `brew` for Mac).
 - For the "stable" version (recommended):
     - `pip install pysme-astro`
-- The latest (but usually not stable) version is in the [develop branch](https://github.com/MingjieJian/SME/tree/develop).
-    - It can be installed with `git clone` and then `pip install .`.
 
 ```{warning}
 PySME requires the pre-compled C++/Fortran SME library to run. Currently we deliver SME library with Linux and Mac version; for Windows users, we recommend to use WSL and hence the Linux version. 
