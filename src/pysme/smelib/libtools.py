@@ -14,7 +14,7 @@ import zipfile
 from pathlib import Path
 from os.path import basename, dirname, exists, join, realpath
 
-import requests, os, sys, subprocess
+import os, sys, subprocess
 import zipfile
 from pathlib import Path
 import shutil
