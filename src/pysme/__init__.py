@@ -54,6 +54,7 @@ if not os.path.exists(libfile):
 
 print('++++++++++++++++++')
 print(os.listdir(f'{str(Path.home())}/.sme/SMElib/SMElib-6.13.7/lib'))
+print(os.listdir(f'{str(Path.home())}/.sme/SMElib/SMElib-6.13.7/'))
 print('-------------')
 print(os.listdir(f'{os.path.dirname(__file__)}/lib/'))
 print('++++++++++++++++++')
