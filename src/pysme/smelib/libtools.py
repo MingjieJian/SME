@@ -126,7 +126,7 @@ def download_libsme(loc=None, pysme_version='default'):
             ["install_name_tool", "-id", fname, fname], capture_output=True, check=True
         )
 
-def download_compile_smelib(tag: str | None = None, outdir: str = f'{str(Path.home())}/.sme/SMElib') -> str:
+def download_compile_smelib(tag=None, outdir=f'{str(Path.home())}/.sme/SMElib'):
     """
     Download and compile a specified versio of SMElib; if tag=None then download the latest.
 
@@ -196,7 +196,7 @@ def download_compile_smelib(tag: str | None = None, outdir: str = f'{str(Path.ho
 
     return extract_dir
 
-def _safe_symlink(src: Path | str, dst: Path | str) -> None:
+def _safe_symlink(src, dst):
     """Create **dst → src** symbolic link, forcibly replacing any pre-existing
     file, directory, or symlink at *dst*.
     """
