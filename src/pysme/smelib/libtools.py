@@ -190,9 +190,25 @@ def download_compile_smelib(tag=None, outdir=f'{str(Path.home())}/.sme/SMElib'):
     cwd = Path.cwd()
     os.chdir(extract_dir)
     subprocess.run(["chmod", "755", "./compile_smelib.sh"], check=True)
+    # with open("smelib_compile.log", "w") as f:
+    #     subprocess.run(["./compile_smelib.sh"], stdout=f, stderr=subprocess.STDOUT, check=True)
+
+    proc = subprocess.run(
+        ["./compile_smelib.sh"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,   # 把 stderr 合并进 stdout，方便统一处理
+        text=True                   # Python 3.7+，自动把 bytes 解码成 str
+    )
+
     with open("smelib_compile.log", "w") as f:
-        subprocess.run(["./compile_smelib.sh"], stdout=f, stderr=subprocess.STDOUT, check=True)
-    # subprocess.run(["./compile_smelib.sh", ">", "smelib_compile.log", "2>&1"], check=True)
+        f.write(proc.stdout)
+
+    if proc.returncode != 0:
+        sys.stderr.write("\n===== compile_smelib.sh FAILED =====\n")
+        sys.stderr.write(proc.stdout)
+        sys.stderr.write("\n====================================\n")
+        raise subprocess.CalledProcessError(proc.returncode, proc.args, output=proc.stdout)
+
     os.chdir(cwd)
     logger.info('Compilation finished.')
 

@@ -731,7 +731,7 @@ class Synthesizer:
 
             if passLineList and (self.update_cdr_switch or linelist_mode == 'all'):
                 s = 0
-                if len(central_depth[s] > 0):
+                if len(central_depth[s]) > 0:
                     sme.linelist._lines.loc[~sme.line_ion_mask, 'central_depth'] = central_depth[s]
                     sme.linelist._lines.loc[sme.line_ion_mask, 'central_depth'] = np.nan
                     sme.linelist._lines.loc[~sme.line_ion_mask, 'line_range_s'] = line_range[s][:, 0]
