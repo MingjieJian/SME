@@ -739,7 +739,10 @@ class Synthesizer:
                     sme.linelist._lines.loc[sme.line_ion_mask, 'line_range_s'] = np.nan
                     sme.linelist._lines.loc[sme.line_ion_mask, 'line_range_e'] = np.nan
                     sme.linelist.cdr_paras = np.array([sme.teff, sme.logg, sme.monh, sme.vmic])
-
+                    # Manually change the 2000 line_range to 0.03.
+                    indices = np.isclose(sme.linelist['line_range_e'] - sme.linelist['line_range_s'], 2000, rtol=1e-4, atol=5, equal_nan=False)
+                    sme.linelist._lines.loc[indices, 'line_range_s'] = sme.linelist._lines.loc[indices, 'wlcent']-0.3
+                    sme.linelist._lines.loc[indices, 'line_range_e'] = sme.linelist._lines.loc[indices, 'wlcent']+0.3
 
             if sme.cscale_type in ["spline", "spline+mask"]:
                 sme.cscale = np.asarray(cscale)
@@ -758,7 +761,7 @@ class Synthesizer:
                 sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags.astype(float)
             else:
                 sme.nlte.flags = nlte_flags
-                sme.linelist._lines['nlte_flag'] = nlte_flags.astype(float)
+                sme.linelist._lines.loc[~sme.line_ion_mask, 'nlte_flag'] = nlte_flags.astype(float)
 
         # Store the adaptive wavelength grid for the future
 
@@ -955,7 +958,7 @@ class Synthesizer:
         
         if cdr_database is not None:
             self._interpolate_or_compute_and_update_linelist(sme, cdr_database, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite, mode=mode, dims=dims)
-            return sme  # 提前结束
+            return sme
 
         logger.info('Using calculation to update central depth and line range.')
         sub_sme_init = SME_Structure()
@@ -969,7 +972,6 @@ class Synthesizer:
             for i in tqdm(range(N_chunk)):
                 sub_sme_init.linelist = sub_linelist[i]
                 sub_sme_init = self.synthesize_spectrum(sub_sme_init)
-
                 if i == 0:
                     stack_linelist = deepcopy(sub_sme_init.linelist)
                 else:
@@ -1007,8 +1009,8 @@ class Synthesizer:
         # Manually change the depth of all H 1 lines to 1, to include them back.
         sme.linelist._lines.loc[sme.linelist['species'] == 'H 1', 'central_depth'] = 1 
 
-        # Manually change the 2000 line_range to 0.01.
-        indices = np.abs(sme.linelist['line_range_e'] - sme.linelist['line_range_s']-2000) < 0.5
+        # Manually change the 2000 line_range to 0.03.
+        indices = np.isclose(sme.linelist['line_range_e'] - sme.linelist['line_range_s'], 2000, rtol=1e-4, atol=5, equal_nan=False)
         sme.linelist._lines.loc[indices, 'line_range_s'] = sme.linelist._lines.loc[indices, 'wlcent']-0.3
         sme.linelist._lines.loc[indices, 'line_range_e'] = sme.linelist._lines.loc[indices, 'wlcent']+0.3
 

@@ -52,12 +52,12 @@ if not os.path.exists(libfile):
     smelib_dir = libtools.download_compile_smelib(tag='6.13.7')
     libtools.link_interface_smelib(smelib_dir)
 
-print('++++++++++++++++++')
-print(os.listdir(f'{str(Path.home())}/.sme/SMElib/SMElib-6.13.7/lib'))
-print(os.listdir(f'{str(Path.home())}/.sme/SMElib/SMElib-6.13.7/'))
-print('-------------')
-print(os.listdir(f'{os.path.dirname(__file__)}/lib/'))
-print('++++++++++++++++++')
+# print('++++++++++++++++++')
+# print(os.listdir(f'{str(Path.home())}/.sme/SMElib/SMElib-6.13.7/lib'))
+# print(os.listdir(f'{str(Path.home())}/.sme/SMElib/SMElib-6.13.7/'))
+# print('-------------')
+# print(os.listdir(f'{os.path.dirname(__file__)}/lib/'))
+# print('++++++++++++++++++')
 
 try:
     cdll.LoadLibrary(libfile)
