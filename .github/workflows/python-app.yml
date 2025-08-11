@@ -47,7 +47,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install autoconf and gfortran (libgfortran) on macOS
-        if: matrix.name == 'macos-intel' or matrix.name == 'macos-apple-silicon'
+        if: ${{ matrix.name == 'macos-intel' || matrix.name == 'macos-apple-silicon' }}
         run: |
           brew update
           brew install autoconf automake libtool gcc
