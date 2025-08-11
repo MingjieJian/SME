@@ -21,6 +21,18 @@ jobs:
             runs_on: macos-13
           - name: macos-apple-silicon
             runs_on: macos-15
+          - name: macos-intel-clang
+            os: macos-13
+            runs_on: macos-13
+            compiler: clang
+            arch: x86_64
+            python: '3.11'
+          - name: macos-arm64-clang
+            os: macos-15
+            runs_on: macos-15
+            compiler: clang
+            arch: arm64
+            python: '3.11'
           # - name: windows
           #   runs_on: windows-latest
     runs-on: ${{ matrix.runs_on }}
@@ -35,7 +47,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install autoconf and gfortran (libgfortran) on macOS
-        if: matrix.runs_on != 'ubuntu-latest'
+        if: matrix.name == 'macos-intel' or matrix.name == 'macos-apple-silicon'
         run: |
           brew update
           brew install autoconf automake libtool gcc
