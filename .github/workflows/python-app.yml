@@ -52,6 +52,10 @@ jobs:
           brew update
           brew install autoconf automake libtool gcc
           brew link --force gcc
+        if: ${{ matrix.name == 'macos-intel-clang' || matrix.name == 'macos-arm64-clang' }}
+        run: |
+          brew update
+          brew install autoconf automake libtool
 
       - name: Set up Python 3.8
         uses: actions/setup-python@v3
