@@ -8,7 +8,7 @@
 
 // The SME library version (and compilation date)
 #ifndef VERSION
-#define VERSION "6.03, July 2019"
+#define VERSION "6.13, June 2025"
 #endif
 
 /* Datafile locations */

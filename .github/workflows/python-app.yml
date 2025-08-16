@@ -34,12 +34,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install autoconf and gfortran (libgfortran) on macOS
-        if: matrix.runs_on != 'ubuntu-latest'
+      - name: Install autoconf and gfortran (libgfortran) on macOS (GCC route)
+        if: ${{ matrix.name == 'macos-intel' || matrix.name == 'macos-apple-silicon' }}
         run: |
           brew update
-          brew install autoconf automake libtool gcc
-          brew link --force gcc
+          # brew install autoconf automake libtool gcc
+          # brew link --force gcc
 
       - name: Set up Python 3.8
         uses: actions/setup-python@v3
