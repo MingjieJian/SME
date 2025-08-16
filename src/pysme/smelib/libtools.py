@@ -29,7 +29,7 @@ smelib_releases = {
     "0.4.199":  "download/v6.0.6",          
 }
 
-def download_libsme(loc=None, pysme_version='default'):
+def download_smelib(loc=None, pysme_version='default'):
     """
     Download the SME library and the necessary datafiles
 
@@ -59,7 +59,7 @@ def download_libsme(loc=None, pysme_version='default'):
     )
     print("Downloading and installing the latest libsme version for this system")
     aliases = {
-        "Linux": "manylinux2014_x86_64",
+        "Linux": "manylinux2014-x86_64",
         "Windows": "windows",
         "Darwin": "macos",
     }
@@ -83,15 +83,11 @@ def download_libsme(loc=None, pysme_version='default'):
         # Search for the number after "Apple M"
         match = re.search(r"Apple\s*M\s*(\d+)", brand)
         if match:
-            # For M1, use M2 version; for M3 use M4 verion (but not test yet)
-            if match.group(1) == '1':
-                use_version = '2'
-            elif match.group(1) == '3':
-                use_version = '4'
-            else:
-                use_version = match.group(1)
-            system += f'-arm-M{use_version}' 
-
+            # Apple Silicon chip, use arm64 library
+            system += '-arm64'
+        else:
+            system += '-x86_64'
+             
     github_releases_fname = "{system}-gfortran.zip".format(system=system)
     url = github_releases_url + "/" + github_releases_fname
     fname = join(loc, github_releases_fname)
