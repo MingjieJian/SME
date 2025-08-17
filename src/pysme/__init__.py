@@ -62,7 +62,7 @@ except OSError as e:
     if sys.platform == "darwin" and ("incompatible architecture" in msg or "mach-o file" in msg):
         need = libtools._parse_needed_arch_from_error(msg)
         print("Detected arch mismatch; need:", need)
-        download_smelib(force_arch=need)
+        libtools.download_smelib(force_arch=need)
         try:
             cdll.LoadLibrary(libfile)
             from .smelib import _smelib
