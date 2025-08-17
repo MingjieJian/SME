@@ -7,7 +7,7 @@ library.
 import ctypes as ct
 import logging
 import os, re
-import platform
+import platform, sysconfig
 import subprocess
 import sys, glob, shutil
 import zipfile
