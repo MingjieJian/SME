@@ -29,7 +29,28 @@ smelib_releases = {
     "0.4.199":  "download/v6.0.6",          
 }
 
-def download_smelib(loc=None, pysme_version='default'):
+def _parse_needed_arch_from_error(msg):
+    # examples: need 'arm64e' or 'arm64' / need 'x86_64'
+    m = re.search(r"need '([^']+)'", msg)
+    if not m:
+        return None
+    a = m.group(1).lower()
+    print(f'Incompatible arch detected, will swith to new arch: {a}.')
+    print(f'Error message: {msg}')
+    if a in ("arm64e", "arm64", "aarch64"):
+        return "arm64"
+    if a in ("x86_64", "amd64", "i386"):
+        return "x86_64"
+    return None
+
+def fix_macos_arch():
+    '''
+    Try to fix the arch incompatible issue of Mac.
+    '''
+    pass
+
+
+def download_smelib(loc=None, pysme_version='default', force_arch=None):
     """
     Download the SME library and the necessary datafiles
 
@@ -102,8 +123,12 @@ def download_smelib(loc=None, pysme_version='default'):
     if system == 'macos':
         # brand = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"]).decode().strip()
         plat = sysconfig.get_platform()  # 'macosx-14.0-arm64' or 'macosx-10.9-x86_64'
-        arch = interpreter_arch()
-        print(arch)
+        if force_arch is None:
+            arch = interpreter_arch()
+            print(f'Auto detected arch is: {arch}')
+        else:
+            arch = force_arch
+            print(f'Forced arch is: {arch}')
         system += f'-{arch}'
 
         # Search for the number after "Apple M"
@@ -122,6 +147,8 @@ def download_smelib(loc=None, pysme_version='default'):
         os.remove(fname)
     except FileNotFoundError:
         pass
+    for sub in ("lib", "share/libsme"):
+        shutil.rmtree(os.path.join(loc, sub), ignore_errors=True)
 
     print("Downloading file %s" % url)
     print(f"Creating folder for lib files: {loc}")
@@ -140,7 +167,7 @@ def download_smelib(loc=None, pysme_version='default'):
 
     print("done")
 
-    if system in ["macos"]:
+    if system.startswith("macos"):
         # Need to adjust the install_names in the dylib
         print("Fixing the file paths in the .dylib file")
         fname = realpath(get_full_libfile())
