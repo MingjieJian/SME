@@ -8,7 +8,7 @@ __version__ = get_versions()["version"]
 del get_versions
 
 # Add output to the console
-import logging, os
+import logging, os, sys
 
 import colorlog
 import tqdm
@@ -52,20 +52,33 @@ if not os.path.exists(libfile):
     # smelib_dir = libtools.download_compile_smelib(tag='6.13.7')
     # libtools.link_interface_smelib(smelib_dir)
     smelib_dir = libtools.download_smelib()
-    
-
-# print('++++++++++++++++++')
-# print(os.listdir(f'{str(Path.home())}/.sme/SMElib/SMElib-6.13.7/lib'))
-# print(os.listdir(f'{str(Path.home())}/.sme/SMElib/SMElib-6.13.7/'))
-# print('-------------')
-# print(os.listdir(f'{os.path.dirname(__file__)}/lib/'))
-# print('++++++++++++++++++')
 
 try:
     cdll.LoadLibrary(libfile)
     from .smelib import _smelib
-except:
+except OSError as e:
+    # macOS 上若报架构不匹配，自动下载所需架构并重试一次
+    msg = str(e)
+    if sys.platform == "darwin" and ("incompatible architecture" in msg or "mach-o file" in msg):
+        need = libtools._parse_needed_arch_from_error(msg)
+        print("Detected arch mismatch; need:", need)
+        libtools.download_smelib(force_arch=need)
+        try:
+            cdll.LoadLibrary(libfile)
+            from .smelib import _smelib
+        except Exception:
+            libtools.compile_interface()
+    else:
+        libtools.compile_interface()
+except Exception:
+    # 其它非 OSError 的情况（如 ImportError 等）
     libtools.compile_interface()
+
+# try:
+#     cdll.LoadLibrary(libfile)
+#     from .smelib import _smelib
+# except:
+#     libtools.compile_interface()
 
 # Extract the 3DNLTE H line profiles
 if not os.path.exists('~/.sme/hlineprof/lineprof.dat'):
