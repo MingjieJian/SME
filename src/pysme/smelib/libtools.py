@@ -45,6 +45,29 @@ def download_smelib(loc=None, pysme_version='default'):
         If no existing library is found for this system
     """
 
+    def interpreter_arch():
+        p = sysconfig.get_platform().lower()
+        if "arm64" in p or "aarch64" in p:
+            return "arm64"
+        if "x86_64" in p or "amd64" in p:
+            return "x86_64"
+        if "universal2" in p:
+            # 询问当前进程到底跑哪个切片
+            print("arch universal2 detected, checking machine arch")
+            m = platform.machine().lower()
+            if m in ("arm64", "aarch64"):
+                return "arm64"
+            if m in ("x86_64", "amd64", "i386"):
+                return "x86_64"
+            try:
+                out = subprocess.check_output(["/usr/bin/arch"]).decode().strip()
+                if out in ("arm64", "x86_64"):
+                    return out
+            except Exception:
+                pass
+        # 兜底
+        return "arm64" if platform.machine().lower() in ("arm64", "aarch64") else "x86_64"
+
     pysme_version = pysme_version.split('+')[0]
     release_subpath = smelib_releases.get(
         pysme_version, smelib_releases["default"]
@@ -79,7 +102,7 @@ def download_smelib(loc=None, pysme_version='default'):
     if system == 'macos':
         # brand = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"]).decode().strip()
         plat = sysconfig.get_platform()  # 'macosx-14.0-arm64' or 'macosx-10.9-x86_64'
-        arch = 'arm64' if 'arm64' in plat else 'x86_64'
+        arch = interpreter_arch()
         print(arch)
         system += f'-{arch}'
 
