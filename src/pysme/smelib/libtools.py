@@ -94,6 +94,18 @@ def download_smelib(loc=None, pysme_version='default', force_arch=None):
         pysme_version, smelib_releases["default"]
     )
 
+    def _macos_unquarantine(root_dir):
+        if sys.platform != "darwin":
+            return
+        # 1) 移除“来自网络”的隔离标记
+        try:
+            subprocess.run(
+                ["xattr", "-dr", "com.apple.quarantine", root_dir + '/lib'],
+                check=False, capture_output=True
+            )
+        except Exception:
+            pass
+
     if loc is None:
         loc = dirname(dirname(get_full_libfile()))
 
@@ -159,6 +171,8 @@ def download_smelib(loc=None, pysme_version='default', force_arch=None):
 
     print("Extracting file")
     zipfile.ZipFile(fname).extractall(loc)
+
+    _macos_unquarantine(loc)
 
     try:
         os.remove(fname)
