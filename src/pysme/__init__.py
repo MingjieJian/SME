@@ -60,7 +60,7 @@ except OSError as e:
     # macOS 上若报架构不匹配，自动下载所需架构并重试一次
     msg = str(e)
     if sys.platform == "darwin" and ("incompatible architecture" in msg or "mach-o file" in msg):
-        need = _parse_needed_arch_from_error(msg) or _interpreter_arch()
+        need = libtools._parse_needed_arch_from_error(msg)
         print("Detected arch mismatch; need:", need)
         download_smelib(force_arch=need)
         try:
