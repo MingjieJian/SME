@@ -77,16 +77,19 @@ def download_smelib(loc=None, pysme_version='default'):
 
     # Refine verion for Apple Silicon chips
     if system == 'macos':
-        brand = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"]).decode().strip()
-        print(brand)
+        # brand = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"]).decode().strip()
+        plat = sysconfig.get_platform()  # 'macosx-14.0-arm64' or 'macosx-10.9-x86_64'
+        arch = 'arm64' if 'arm64' in plat else 'x86_64'
+        print(arch)
+        system += f'-{arch}'
 
         # Search for the number after "Apple M"
-        match = re.search(r"Apple\s*M\s*(\d+)", brand)
-        if match:
-            # Apple Silicon chip, use arm64 library
-            system += '-arm64'
-        else:
-            system += '-x86_64'
+        # match = re.search(r"Apple\s*M\s*(\d+)", brand)
+        # if match:
+        #     # Apple Silicon chip, use arm64 library
+        #     system += '-arm64'
+        # else:
+        #     system += '-x86_64'
              
     github_releases_fname = "{system}-gfortran.zip".format(system=system)
     url = github_releases_url + "/" + github_releases_fname

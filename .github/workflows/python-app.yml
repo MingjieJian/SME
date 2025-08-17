@@ -60,28 +60,13 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      # - name: Install libraries
-      #   if: ${{ matrix.runs_on == 'macos-latest' }}
-      #   run: |
-      #     echo $PWD
-      #     ls
-      #     cd src/pysme/smelib
-      #     python -c "from libtools import download_libsme; download_libsme()"
-      #     cd ../lib
-      #     install_name_tool -id $PWD/libsme.5.dylib libsme.5.dylib
-      #     install_name_tool -id $PWD/libsme.dylib libsme.dylib
-      #     install_name_tool -id $PWD/sme_synth.so.darwin.x86_64.64 sme_synth.so.darwin.x86_64.64
-      #     cd ../smelib
-      #     python -c "from libtools import compile_interface; compile_interface()"
-      #     echo $PWD
-
       - name: Test with pytest
         run: pytest
 
       - name: GitHub Tag
         if: github.event_name != 'pull_request' && matrix.name == 'ubuntu'
         id: tag_release
-        uses: mathieudutour/github-tag-action@v5
+        uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -93,7 +78,11 @@ jobs:
 
       - name: Build Wheel
         if: matrix.name == 'ubuntu'
-        run: pip install wheel && python setup.py sdist bdist_wheel
+        # run: pip install wheel && python setup.py sdist bdist_wheel
+        run: |
+          python -m pip install -U pip
+          python -m pip install -U setuptools wheel build
+          python -m build
 
       - name: Zip data
         if: matrix.name == 'ubuntu'
