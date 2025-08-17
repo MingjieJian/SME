@@ -6,7 +6,7 @@ import os, sys
 from ctypes import cdll
 from os.path import abspath, dirname, join, normpath
 from posixpath import expanduser
-
+from .smelib import libtools
 import numpy as np
 
 from .smelib.libtools import get_full_datadir, get_full_libfile, _parse_needed_arch_from_error, download_smelib
