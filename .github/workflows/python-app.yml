@@ -48,9 +48,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.py }}
-        run: |
-          python -V
-          python -c "import sys, sysconfig; print(sys.executable); print(sysconfig.get_platform())"
+        # run: |
+        #   python -V
+        #   python -c "import sys, sysconfig; print(sys.executable); print(sysconfig.get_platform())"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
