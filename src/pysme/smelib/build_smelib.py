@@ -55,4 +55,5 @@ ext = Extension(
     extra_link_args=extra_link_args,
 )
 
-setup(ext_modules=[ext])
+if __name__ == "__main__":
+    setup(ext_modules=[ext])
