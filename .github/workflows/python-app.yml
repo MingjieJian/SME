@@ -54,10 +54,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest
-          # pip install -r requirements.txt
+          # pip install flake8 pytest
           python -m pip install .[dev]
-          python setup.py version
+          # python setup.py version
           pip install .
 
       - name: Lint with flake8
@@ -88,7 +87,7 @@ jobs:
         # run: pip install wheel && python setup.py sdist bdist_wheel
         run: |
           python -m pip install -U pip
-          python -m pip install -U setuptools wheel build
+          python -m pip install -U wheel build
           python -m build
 
       - name: Zip data
