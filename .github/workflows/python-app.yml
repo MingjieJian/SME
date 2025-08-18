@@ -83,7 +83,7 @@ jobs:
           clean: false
 
       - name: Build Wheel
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.py == '3.12'
         # run: pip install wheel && python setup.py sdist bdist_wheel
         run: |
           python -m pip install -U pip
@@ -91,12 +91,12 @@ jobs:
           python -m build
 
       - name: Zip data
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.py == '3.12'
         id: zip_data
         run: zip -r dist dist && echo "::set-output name=filename::dist.zip"
 
       - name: Create Release
-        if: github.event_name != 'pull_request' && matrix.os == 'ubuntu-latest'
+        if: github.event_name != 'pull_request' && matrix.os == 'ubuntu-latest' && matrix.py == '3.12'
         id: create_release
         uses: actions/create-release@v1
         env:
@@ -108,7 +108,7 @@ jobs:
           prerelease: false
 
       - name: Upload Release Asset
-        if: github.event_name != 'pull_request' && matrix.os == 'ubuntu-latest'
+        if: github.event_name != 'pull_request' && matrix.os == 'ubuntu-latest' && matrix.py == '3.12'
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -120,7 +120,7 @@ jobs:
           asset_content_type: application/zip
 
       - name: Publish a Python distribution to PyPI
-        if: github.event_name != 'pull_request' && matrix.os == 'ubuntu-latest'
+        if: github.event_name != 'pull_request' && matrix.os == 'ubuntu-latest' && matrix.py == '3.12'
         uses: pypa/gh-action-pypi-publish@release/v1
         # with:
         #   user: __token__
