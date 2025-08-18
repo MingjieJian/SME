@@ -312,10 +312,15 @@ def compile_interface():
         # If python is unable to identify the path to its own executable use python3
         # This is unlikely to happen for us though
         executable = "python3"
+    try:
+        import setuptools, wheel
+    except Exception:
+        subprocess.check_call([executable, "-m", "pip", "install", "-U", "setuptools", "wheel"])
+    
     cwd = os.getcwd()
     # We need to swith to the correct directory and back, for setup.py to work
     os.chdir(libdir)
-    subprocess.run([executable, "setup.py", "build_ext", "--inplace"])
+    subprocess.run([executable, "build_smelib.py", "build_ext", "--inplace"])
     os.chdir(cwd)
 
 

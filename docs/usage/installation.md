@@ -2,20 +2,14 @@
 
 PySME can be installed through PyPI (recommended) or from github directly.
 
-## Prerequisites:
-- libgfortran5 (e.g., from [here](https://pkgs.org/download/libgfortran5))
-- gcc
-- autoconf, automake, libtool
-- You can install them by `sudo apt install autoconf automake libtool gcc` (or use `brew` for Mac).
+Currently PySME is tested with Python verion 3.9-3.13.
 
 ## (optional) set up virtual environment
-- download the environment.yml from [here](https://github.com/MingjieJian/SME.git).
-- cd to the download location
-- `conda env create -f environment.yml`
+- `conda env create --name pysme`
+    - You can specify python verion using `python=3.12`
 - `source activate pysme`
 
 ## Install 
--
 - For the "stable" version (recommended):
     - `pip install pysme-astro`
 

@@ -1,7 +1,94 @@
 [build-system]
-requires = ["setuptools>=69", "wheel", "build>=1.0", "versioneer[toml]>=0.22"]
+requires = [
+  "setuptools>=80",
+  "wheel",
+  "numpy>=1.23",             # 构建期需要 NumPy 头文件时必须
+  "versioneer[toml]>=0.22"   # PEP 621/pyproject 方式的 versioneer
+]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "pysme-astro"
+requires-python = ">=3.9"
+dynamic = ["version"]
+description = "Spectroscopy Made Easy"
+readme = { file = "README.md", content-type = "text/markdown" }
+authors = [
+  { name = "Mingjie Jian" },
+  { name = "Ansgar Wehrhahn" },
+  { name = "Jeff A. Valenti" },
+]
+
+
+dependencies = [
+  "numpy>=1.23,<2.0",
+  "scipy>=1.9,<2.0",
+  "pandas>=1.5,<3.0",
+  "astropy>=6,<8",
+  "tqdm>=4.64",
+  "colorlog>=6.7",
+  "emcee>=3.1",
+  "pybtex>=0.24",
+  "flex-format>=0.2.18",
+  "plotly>=5.11,<6.0",
+  "matplotlib>=3.6,<4.0",
+  "requests>=2.28,<3.0",
+  "wget>=3.2",
+  "pqdm>=0.1"  # 旧 setup.py 里有该依赖，这里补上以保持一致
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
+]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/MingjieJian/SME/issues"
+"Documentation" = "https://pysme-astro.readthedocs.io/en/latest/"
+"Source Code"  = "https://github.com/MingjieJian/SME/"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.2,<9",
+  "sphinx>=5.3,<9",
+  "pre-commit>=2.20,<4",
+  "flake8>=7,<8"
+]
+
+# 让 wheel 也包含包内数据文件
+[tool.setuptools]
+include-package-data = true
+
+# 按你的 src 布局做包发现
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["pysme*"]
+
+# 如需明确指定随包带的文件，可按需调整通配
+[tool.setuptools.package-data]
+pysme = [
+  "data/**/*",
+  "datafiles_*.json",
+  "*.h", "*.c", "*.cpp", "*.f", "*.f90", "*.pyx", "*.pxd", "*.pxi"
+]
+
+# Versioneer 配置（路径与你当前仓库一致）
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "src/pysme/_version.py"
+versionfile_build   = "pysme/_version.py"
+tag_prefix = "v"
+parentdir_prefix = "pysme-"
+
+# Black：代码格式化配置
 [tool.black]
 line-length = 88
 include = '\.pyi?$'
