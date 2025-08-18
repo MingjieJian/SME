@@ -1,18 +1,25 @@
 [build-system]
-# 构建后端只需要能“构建”你的包的依赖；前端工具（如 `build`）不必写在这里
 requires = [
   "setuptools>=80",
   "wheel",
-  "numpy>=1.23",             # 如果扩展编译期需要 NumPy 头文件，请保留
-  "versioneer[toml]>=0.22"   # 用 versioneer 动态注入版本
+  "numpy>=1.23",             # 构建期需要 NumPy 头文件时必须
+  "versioneer[toml]>=0.22"   # PEP 621/pyproject 方式的 versioneer
 ]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pysme"
+name = "pysme-astro"
 requires-python = ">=3.9"
-# 你用 versioneer → 让版本“动态生成”
 dynamic = ["version"]
+description = "Spectroscopy Made Easy"
+readme = { file = "README.md", content-type = "text/markdown" }
+authors = [
+  { name = "Mingjie Jian" },
+  { name = "Ansgar Wehrhahn" },
+  { name = "Jeff A. Valenti" },
+]
+
+
 dependencies = [
   "numpy>=1.23,<2.0",
   "scipy>=1.9,<2.0",
@@ -27,14 +34,9 @@ dependencies = [
   "matplotlib>=3.6,<4.0",
   "requests>=2.28,<3.0",
   "wget>=3.2",
+  "pqdm>=0.1"  # 旧 setup.py 里有该依赖，这里补上以保持一致
 ]
-# 可选：补充元数据（强烈建议）
-# authors = [{ name = "Your Name", email = "you@example.com" }]
-# description = "Short description of pysme"
-# readme = "README.md"
-# license = { file = "LICENSE" }
 
-# 注意：classifiers 不是一个子表，而是 project 里的一个“列表字段”
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.9",
@@ -42,7 +44,15 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
 ]
+
+[project.urls]
+"Bug Tracker" = "https://github.com/MingjieJian/SME/issues"
+"Documentation" = "https://pysme-astro.readthedocs.io/en/latest/"
+"Source Code"  = "https://github.com/MingjieJian/SME/"
 
 [project.optional-dependencies]
 dev = [
@@ -52,23 +62,33 @@ dev = [
   "flake8>=7,<8"
 ]
 
-# 包发现（建议显式写上）
+# 让 wheel 也包含包内数据文件
+[tool.setuptools]
+include-package-data = true
+
+# 按你的 src 布局做包发现
 [tool.setuptools.packages.find]
-# 如果你的包位于仓库根目录的 `pysme/`，如下足够；
-# 若采用 src 布局，则换成 where=["src"]，并 include=["pysme*"]
-where=["src"]
+where = ["src"]
 include = ["pysme*"]
 
-# Versioneer 配置（务必与仓库实际路径一致）
+# 如需明确指定随包带的文件，可按需调整通配
+[tool.setuptools.package-data]
+pysme = [
+  "data/**/*",
+  "datafiles_*.json",
+  "*.h", "*.c", "*.cpp", "*.f", "*.f90", "*.pyx", "*.pxd", "*.pxi"
+]
+
+# Versioneer 配置（路径与你当前仓库一致）
 [tool.versioneer]
 VCS = "git"
 style = "pep440"
-versionfile_source = "src/pysme/_version.py"   # 运行 `versioneer install` 会生成
-versionfile_build = "src/pysme/_version.py"
-tag_prefix = "v"                            # 例如你的 tag 形如 v1.2.3，可写 "v"
+versionfile_source = "src/pysme/_version.py"
+versionfile_build   = "pysme/_version.py"
+tag_prefix = "v"
 parentdir_prefix = "pysme-"
 
-# Black: 代码格式化配置
+# Black：代码格式化配置
 [tool.black]
 line-length = 88
 include = '\.pyi?$'
