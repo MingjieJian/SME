@@ -70,14 +70,14 @@ jobs:
         run: pytest
 
       - name: GitHub Tag
-        if: github.event_name != 'pull_request' && matrix.os == 'ubuntu-latest'
+        if: github.event_name != 'pull_request' && matrix.os == 'ubuntu-latest' && matrix.py == '3.12'
         id: tag_release
         uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/checkout@v4
-        if: github.event_name != 'pull_request' && matrix.os == 'ubuntu-latest'
+        if: github.event_name != 'pull_request' && matrix.os == 'ubuntu-latest' && matrix.py == '3.12'
         with:
           ref: ${{ steps.tag_release.outputs.new_tag }}
           clean: false
