@@ -188,6 +188,9 @@ def download_smelib(loc=None, pysme_version='default', force_arch=None):
         subprocess.run(
             ["install_name_tool", "-id", fname, fname], capture_output=True, check=True
         )
+        bins = glob.glob(os.path.join(loc + '/lib/', "*.dylib"))
+        for b in bins:
+            subprocess.run(["codesign", "-s", "-", "-f", "--timestamp=none", b], check=True)
 
 def download_compile_smelib(tag=None, outdir=f'{str(Path.home())}/.sme/SMElib'):
     """
