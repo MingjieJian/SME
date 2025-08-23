@@ -107,7 +107,7 @@ class KrzFile(Atmosphere):
 
         # parse abundance
         pattern = abun[:, 1]
-        self.abund = Abund(monh=self.monh, pattern=pattern, type="sme")
+        self.abund = Abund(monh=self.monh, pattern=pattern, type="kurucz")
 
         # parse table
         self.table = model_lines
