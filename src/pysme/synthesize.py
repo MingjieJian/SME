@@ -957,6 +957,7 @@ class Synthesizer:
             raise ValueError
         
         if cdr_database is not None:
+            # cdr_database is provided, use it to update the central depth and line range
             self._interpolate_or_compute_and_update_linelist(sme, cdr_database, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite, mode=mode, dims=dims)
             return sme
 
@@ -1022,7 +1023,7 @@ class Synthesizer:
         return sme
 
     def _interpolate_or_compute_and_update_linelist(
-        self, sme, cdr_database, cdepth_decimals=4, cdepth_thres=0.0001,
+        self, sme, cdr_database, cdepth_decimals=4, cdepth_thres=0,
         range_decimals=2, cdr_create=False, cdr_grid_overwrite=False,
         mode='linear', dims=['teff', 'logg', 'monh']
     ):

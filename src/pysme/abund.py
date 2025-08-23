@@ -556,12 +556,19 @@ class Abund(IPersist):
         if np.isnan(abund[0]):
             raise ValueError("Pattern must define abundance of H")
 
+        # print(abund)
+
         type = fromtype.lower()
         if type == "h=12":
             pass
         elif type == "sme":
+            # sme -> H=12
+            abund[1:] += 12 - np.log10(abund[0])
+            abund[0] = 12
+        elif type == "kurucz":
+            # kurucz -> H=12
+            abund[2:] = abund[2:] + np.log10(abund[1] / abund[0] + 1) + 12
             abund[1] = np.log10(abund[1]/abund[0]) + 12
-            abund[2:] += 12 - np.log10(abund[0])
             abund[0] = 12
         elif type == "n/ntot":
             abund /= abund[0]
@@ -580,16 +587,17 @@ class Abund(IPersist):
                 "got abundance type '{}',".format(type)
                 + " should be 'H=12', 'n/nH', 'n/nTot', 'n/nFe', 'Fe=12', or 'sme'"
             )
+
         if raw:
             return abund
         else:
             return {el: abund[elements_dict[el]] for el in elements}
-
+        
     @staticmethod
-    def totype(pattern, totype, raw=False, copy=True):
+    def totype(pattern, totype, raw=False, copy=True, X=None):
         """Return a copy of the input abundance pattern, transformed from
         the 'H=12' type to the output type. Valid abundance pattern types
-        are 'sme', 'n/nTot', 'n/nH', and 'H=12'.
+        are 'sme', 'kurucz', 'n/nTot', 'n/nH', and 'H=12'.
         """
         if isinstance(pattern, dict):
             abund = [pattern[el] if el in pattern.keys() else np.nan for el in elements]
@@ -604,12 +612,13 @@ class Abund(IPersist):
         if type == "h=12":
             pass
         elif type == "sme":
-            abund2 = 10 ** (abund - 12)
-            abund[0] = 1 / np.nansum(abund2)
-            abund[1] = 10**(abund[1] - 12) * abund[0]
-            abund[2:] = abund[2:] - 12 + np.log10(abund[0])
-            # abund /= np.sum(abund)
-            # abund[1:] = np.log10(abund[1:])
+            abund[0] = 1 / (1 + np.nansum(10**(abund[1:]-12)))
+            abund[1:] = np.log10(abund[0] * 10**(abund[1:] - 12))
+        elif type == "kurucz":
+            # H=12 -> kurucz
+            abund[0] = 1 / (1 + np.nansum(10**(abund[1:] - 12)))
+            abund[1] = 1 / (10**(12-abund[1]) + 1 + 10**(12-abund[1]) * np.nansum(10**(abund[2:]-12)))
+            abund[2:] = abund[2:] - 12 - np.log10(1 + 10**(abund[1]-12))
         elif type == "n/ntot":
             abund = 10 ** (abund - 12)
             abund /= np.nansum(abund)
@@ -627,7 +636,7 @@ class Abund(IPersist):
         else:
             raise ValueError(
                 "got abundance type '{}',".format(type)
-                + " should be 'H=12', 'n/nH', 'n/nTot', 'n/nFe', 'Fe=12', or 'sme'"
+                + " should be 'H=12', 'kurucz', 'n/nH', 'n/nTot', 'n/nFe', 'Fe=12', or 'sme'"
             )
 
         if raw:
