@@ -1139,7 +1139,7 @@ class Synthesizer:
             logger.info("[CDF] Fallback: recomputing line properties.")
             self.update_cdr(sme, cdr_database=None)
 
-            mask = sme.linelist['central_depth'] >= cdepth_thres
+            mask = sme.linelist['central_depth'] > cdepth_thres
             filtered_df = sme.linelist[['central_depth', 'line_range_s', 'line_range_e']][mask]
             filtered_iloc = np.where(mask)[0]
 
