@@ -29,3 +29,13 @@ These files can also be downloaded manually by:
     - atmospheres: everything from SME/atmospheres
 - Download the nlte_grids in [zenodo](https://doi.org/10.5281/zenodo.3888393).
 ```
+
+## Uninstall 
+
+You can uninstall PySME by:
+```sh
+pip uninstall pysme-astro
+```
+
+Note that several files (data file, SMElib file etc) will remain after the uninstall. 
+They are all list in the output of the pip command, and it is recommended to remove them manually.
