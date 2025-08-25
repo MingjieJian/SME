@@ -58,7 +58,6 @@ values of H, He, and Li are approximately 3.16e4, 2.69e3, and
 
 ## Solar metallicity
 
-
 PySME contains three pre defined sets of solar abundances,
 for you to choose from. They are:
 
@@ -80,3 +79,41 @@ creation of the abundance. E.g. Abund("grevesse2007").
 The default solar abundance is 'grevesse2007' and is also
 available using Abund.solar().
 
+## Conversions
+
+### sme -> H=12
+
+We have:
+- $S_\mathrm{H} = \frac{N_\mathrm{H}}{N_\mathrm{all}}$ for Hydrogen in `sme` scale;
+- $S_\mathrm{X} = \log{\frac{N_\mathrm{X}}{N_\mathrm{all}}}$ for element $\mathrm{X}$ other than Hydrogen in `sme` scale;
+- $H_\mathrm{H} = 12$ for Hydrogen in `H=12` scale;
+- $H_\mathrm{X} = \log{\frac{N_\mathrm{X}}{N_\mathrm{H}}} + 12$ for element $\mathrm{X}$ other than Hydrogen in `H=12` scale.
+
+thus
+
+- $H_\mathrm{X} = S_\mathrm{X} - \log{S_\mathrm{H}}$
+
+### H=12 -> sme
+
+- $S_\mathrm{H} = \left[1 + \sum_\mathrm{X}{10^{H_\mathrm{X}-12}} \right]^{-1}$
+- $S_\mathrm{X} = \log{(S_\mathrm{H} \times 10^{H_\mathrm{X}-12})}$
+
+### kurucz -> H=12
+
+We have:
+- $K_\mathrm{H} = \frac{N_\mathrm{H}}{N_\mathrm{all}}$ for Hydrogen in `kurucz` scale;
+- $K_\mathrm{He} = \frac{N_\mathrm{He}}{N_\mathrm{all}}$ for Helium in `kurucz` scale;
+- $K_\mathrm{X} = \log{\frac{N_\mathrm{X}}{N_\mathrm{H}+N_\mathrm{He}}}$ for element $\mathrm{X}$ other than H and He in `kurucz` scale;
+- $H_\mathrm{H} = 12$ for Hydrogen in `H=12` scale;
+- $H_\mathrm{X} = \log{\frac{N_\mathrm{X}}{N_\mathrm{H}}} + 12$ for element $\mathrm{X}$ other than Hydrogen in `H=12` scale.
+
+thus 
+
+- $H_\mathrm{He} = \log{\frac{K_\mathrm{He}}{K_\mathrm{H}}} + 12$
+- $H_\mathrm{X} = K_\mathrm{X} + \log{\left(\frac{K_\mathrm{He}}{K_\mathrm{H}} + 1\right)} + 12$
+
+### H=12 -> kurucz
+
+- $K_\mathrm{H} = \left(1 + \sum_\mathrm{X}10^{H_\mathrm{X}-12} \right)^{-1}$
+- $K_\mathrm{He} = \left(10^{12-H_\mathrm{He}} + 1 + 10^{12-H_\mathrm{He}}\times\sum_\mathrm{X}10^{H_\mathrm{X}-12} \right)^{-1}$
+- $K_\mathrm{X} = H_\mathrm{X}-12-\log{(1+10^{H_\mathrm{He}-12})}$

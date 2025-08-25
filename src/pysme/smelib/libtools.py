@@ -323,7 +323,7 @@ def compile_interface():
     cwd = os.getcwd()
     # We need to swith to the correct directory and back, for setup.py to work
     os.chdir(libdir)
-    subprocess.run([executable, "build_smelib.py", "build_ext", "--inplace"])
+    subprocess.run([executable, "build_smelib.py", "build_ext", "--inplace", "--force"])
     os.chdir(cwd)
 
 
