@@ -34,7 +34,7 @@ dependencies = [
   "matplotlib>=3.6,<4.0",
   "requests>=2.28,<3.0",
   "wget>=3.2",
-  "pqdm>=0.1"  # 旧 setup.py 里有该依赖，这里补上以保持一致
+  "pqdm>=0.1"
 ]
 
 classifiers = [
