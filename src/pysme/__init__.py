@@ -50,20 +50,8 @@ from .smelib import libtools
 from .init_config import ensure_user_config
 ensure_user_config()
 
-# if os.getenv("PYSME_AUTO_INIT", "1") not in ("0", "false", "False"):
-#     try:
-#         from .init_config import ensure_user_config
-#         verbose = os.getenv("PYSME_INIT_VERBOSE", "0") in ("1", "true", "True")
-#         ensure_user_config()
-#     except Exception:
-#         # 别让导入因为初始化失败而崩；必要时记录日志
-#         pass
-
 libfile = libtools.get_full_libfile()
 if not os.path.exists(libfile):
-    # smelib_dir = libtools.download_compile_smelib(tag='6.13.5', outdir=f'{os.path.dirname(__file__)}/lib_sc')
-    # smelib_dir = libtools.download_compile_smelib(tag='6.13.7')
-    # libtools.link_interface_smelib(smelib_dir)
     smelib_dir = libtools.download_smelib()
 
 try:
@@ -86,12 +74,6 @@ except OSError as e:
 except Exception:
     # 其它非 OSError 的情况（如 ImportError 等）
     libtools.compile_interface()
-
-# try:
-#     cdll.LoadLibrary(libfile)
-#     from .smelib import _smelib
-# except:
-#     libtools.compile_interface()
 
 # Extract the 3DNLTE H line profiles
 if not os.path.exists('~/.sme/hlineprof/lineprof.dat'):
