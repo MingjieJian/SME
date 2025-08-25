@@ -14,6 +14,19 @@ import colorlog
 import tqdm
 from pathlib import Path
 
+# numpy 2.x 兼容 shim：把内部实现映射回 numpy.lib.format
+try:
+    # NumPy 1.x：本来就有
+    from numpy.lib.format import _check_version, _read_array_header  # noqa: F401
+except Exception:
+    import importlib
+    fmt = importlib.import_module("numpy.lib.format")
+    impl = importlib.import_module("numpy.lib._format_impl")  # NumPy 2.x 存放处
+    if not hasattr(fmt, "_check_version") and hasattr(impl, "_check_version"):
+        fmt._check_version = impl._check_version
+    if not hasattr(fmt, "_read_array_header") and hasattr(impl, "_read_array_header"):
+        fmt._read_array_header = impl._read_array_header
+
 
 class TqdmLoggingHandler(logging.Handler):
     def __init__(self, level=logging.NOTSET):
