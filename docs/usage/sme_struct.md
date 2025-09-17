@@ -53,16 +53,11 @@ PySME has many options to determine them.
 Spectra
 -------
 
-Spectra are given as a list of arrays [#]_, where each array represents
+Spectra are given as a list of arrays[^#], where each array represents
 one wavelength segment of the spectrum. If there is only one segment,
 the list will only have one element. For legacy reasons there is also
 an interface to the 'old' system and names (e.g. smod instead of synth)
 from IDL SME. It is recommend however to use the new variables.
-
-.. [#]
-    They are called Illiffe vectors in the code, and they were that in IDL.
-    But they are technically not Illiffe vectors anymore, but just lists
-    of individal numpy arrays.
 
 :wave: The wavelength grid of the observation and/or the synthetic spectrum
 :spec: The observed spectrum
@@ -70,8 +65,8 @@ from IDL SME. It is recommend however to use the new variables.
     The uncertainties of the observed spectrum. If None will use
     uncertainty 1 for all points.
 :mask:
-    The bad pixel mask for the observation. Only the good pixels will
-    contribute to the fit, but the synthetic spectrum will still be calculated
+    The pixel mask for the observation, with defination of 0 as bad pixel, 1 as line pixel, 2 as continuum pixel, and 4 as vrad pixel. The masks are additive, i.e., you can set mask value to 5 for line and vrad pixel. Only the good pixels will contribute to the fit, but the synthetic spectrum will still be calculated.
+    Note that ``dtype`` of ``sme.mask`` must be int.
 :synth: The synthetic spectrum
 
 :wran:
@@ -166,7 +161,7 @@ Other Parameters
 :accrt:
     Minimum accuracy for synthethized spectrum at wavelength grid
     points in sme.wave. Values below 1e-4 are not meaningful
-:accwt:
+:accwi:
     Minimum accuracy for linear spectrum interpolation vs. wavelength.
     Values below 1e-4 are not meaningful.
 :version: The version of sme used to create this structure and spectrum
@@ -174,11 +169,4 @@ Other Parameters
     The date and time when this structure or the
     last synthetic spectrum was created
 
-```{toctree}
-:maxdepth: 1    
-linelist
-abundance
-atmosphere
-nlte
-fitparameters
-fitresults
+[^#] They are called Illiffe vectors in the code, and they were that in IDL. But they are technically not Illiffe vectors anymore, but just lists of individal numpy arrays.

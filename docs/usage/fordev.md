@@ -1,5 +1,10 @@
 # For dev
 
+
+```{warning}
+This is the page mainly for developers of PySME and the note on its function, which may have inaccurate information.
+```
+
 ## PySME components
 
 Since SME is the C++/Fortran library for the spectral synthesis part, PySME is divided into a few components to make the code work.
@@ -79,3 +84,23 @@ Note that:
 The versions are controlled by `git tag`. 
 For PySME, setting a new tag will update the version to the latest tag.
 For SMElib, setting a new release will based on a tag. 
+
+## NLTE departure coefficients
+
+What happens when the NLTE grid is added into PySME?
+
+1. `sme.nlte.set_nlte()`, then nothing happens.
+2. Inside `synthesize_spectrum()`, `sme.nlte.update_coefficients(sme, dll, self.lfs_nlte)` will be triggered if there is nlte grids in `sme`.
+
+### `nlte.update_coefficients`
+
+1. All the $b$s will be reset by `dll.ResetDepartureCoefficients()`.
+2. Format of line list will be check, and NLTE calculation will not be performed if the format is not `long`.
+3. Get the NLTE grid using `self.get_grid(sme, elem, lfs_nlte)`
+4. If no lines are found for this element, remove it from NLTE list.
+5. Get the $b$ matrix using `grid.get(sme.abund, sme.teff, sme.logg, sme.monh, sme.atmo)`. 
+    - This is also the core part of `update_coefficients`.
+6. Input the $b$s using `dll.InputDepartureCoefficients(bmat[:, lr], li)`.
+
+### `grid.get`
+

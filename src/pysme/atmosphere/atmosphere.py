@@ -43,7 +43,7 @@ class Atmosphere(Collection):
         ("vturb", 0, absolute, this, "float: turbulence velocity in km/s"),
         ("lonh", 0, asfloat, this, "float: ?"),
         ("source", "marcs2012.sav", this, this, "str: datafile name of this data, or atmosphere grid/file"),
-        ("method", "grid", lowercase(oneof("grid", "embedded")), this,
+        ("method", "grid", lowercase(oneof("grid", "routine", "embedded")), this,
             "str: whether the data source is a grid or a fixed atmosphere"),
         ("geom", "PP", uppercase(oneof("PP", "SPH", None)), this,
             "str: the geometry of the atmopshere model"),

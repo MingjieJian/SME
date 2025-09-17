@@ -174,7 +174,6 @@ archivePrefix = {arXiv},
 }
 """
 
-
 _citation_atomic_weights = r"""
 @article{loss2003atomic,
   title={Atomic weights of the elements 2001 (IUPAC Technical Report)},
