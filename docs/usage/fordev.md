@@ -102,5 +102,18 @@ What happens when the NLTE grid is added into PySME?
     - This is also the core part of `update_coefficients`.
 6. Input the $b$s using `dll.InputDepartureCoefficients(bmat[:, lr], li)`.
 
-### `grid.get`
+#### `self.get_grid`
 
+This function is to get the $b$ grid for a specific element.
+Note that the whole $b$ grid is not readed, but only the levels related with the input line list.
+Thus the configuration or level matching is done inside this function.
+
+#### configuration/level matching
+
+This is done inside `Grid.__init__`. The level matching can be done with levels or energy, and the default one is energy.
+
+#### `grid.get`
+
+1. Find the relative abundance input
+2. `self.read_grid(rabund, teff, logg, monh)`
+3. `return self.interpolate(rabund, teff, logg, monh, atmo)`.

@@ -1030,7 +1030,7 @@ class Synthesizer:
         return sme
 
     def _interpolate_or_compute_and_update_linelist(
-        self, sme, cdr_database, cdepth_decimals=4, cdepth_thres=-1,
+        self, sme, cdr_database, cdepth_decimals=4, cdepth_thres=0,
         range_decimals=2, cdr_create=False, cdr_grid_overwrite=False,
         mode='linear', dims=['teff', 'logg', 'monh'], show_progress_bars=False
     ):
@@ -1084,8 +1084,10 @@ class Synthesizer:
                         iloc = data[:, 0].astype(int)
 
                         arr_cdepth = np.zeros(n_lines_total, dtype=np.float32)
-                        arr_lrs    = np.full(n_lines_total, np.nan, dtype=np.float32)
-                        arr_lre    = np.full(n_lines_total, np.nan, dtype=np.float32)
+                        # arr_lrs    = np.full(n_lines_total, np.nan, dtype=np.float32)
+                        # arr_lre    = np.full(n_lines_total, np.nan, dtype=np.float32)
+                        arr_lrs    = sme.linelist['wlcent'] - 0.3
+                        arr_lre    = sme.linelist['wlcent'] + 0.3
                         arr_cdepth[iloc] = data[:, 1]
                         arr_lrs[iloc]    = data[:, 2]
                         arr_lre[iloc]    = data[:, 3]
