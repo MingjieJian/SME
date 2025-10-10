@@ -132,3 +132,8 @@ For each segment i:
 
 This variable determines how the cscale and vrad being assigned, and can be specfied manually.
 
+## IDLSME
+
+### Installation
+
+TBD.
