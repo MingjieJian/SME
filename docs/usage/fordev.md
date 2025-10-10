@@ -117,3 +117,18 @@ This is done inside `Grid.__init__`. The level matching can be done with levels 
 1. Find the relative abundance input
 2. `self.read_grid(rabund, teff, logg, monh)`
 3. `return self.interpolate(rabund, teff, logg, monh, atmo)`.
+
+## `apply_continuum`
+
+Apply continuum to the spectra according to `cscale`.
+    
+For each segment i: 
+    - If `cscale_type` contains 'spline', then `cscale` should be an array which with the same length of sme.wave[i], and its value will be multiplied to sme.synth[i].
+        - If the length of `cscale` is not the same as the length of `sme.wave[i]`, then it will be interpolated according to `cwave`, which for now is the same as `sme.wave[i]` thus this situation is not allowed.
+        - We may just remove the `spline` option, if not stated in the paper. 
+    - If `cscale_type` does not contain 'spline', then the code will calculate `np.polyval` according to `cscale`, and apply to `sme.synth[i]`.
+
+## `radial_velocity_mode`
+
+This variable determines how the cscale and vrad being assigned, and can be specfied manually.
+

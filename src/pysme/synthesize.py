@@ -128,7 +128,6 @@ class Synthesizer:
             )
         elif atmo.method == "routine":
             atmo = atmo.source(sme, atmo)
-            print(atmo)
         elif atmo.method == "embedded":
             # atmo structure already extracted in sme_main
             pass
@@ -213,7 +212,7 @@ class Synthesizer:
         return segments
 
     @staticmethod
-    def apply_radial_velocity_and_continuum(
+    def apply_radial_velocity_and_continuum_synth(
         wave, spec, wmod, smod, cmod, vrad, cscale, cscale_type, segments
     ):
         smod = apply_radial_velocity_and_continuum(
@@ -563,6 +562,7 @@ class Synthesizer:
         sme : SME_Struct
             same sme structure with synthetic spectrum in sme.smod
         """
+
         # Prepare 3D NLTE H profile corrections
         if sme.tdnlte_H:
         #     sme.tdnlte_H_correction = self.get_H_3dnlte_correction(sme)
@@ -592,9 +592,7 @@ class Synthesizer:
                 mask |= sme.uncs[i] == 0
                 sme.mask[i][mask] = MASK_VALUES.BAD
 
-        if radial_velocity_mode != "robust" and (
-            "cscale" not in sme or "vrad" not in sme
-        ):
+        if radial_velocity_mode != "robust" and ("cscale" not in sme or "vrad" not in sme):
             radial_velocity_mode = "robust"
 
         segments = self.check_segments(sme, segments)
@@ -699,7 +697,7 @@ class Synthesizer:
         else:
             raise ValueError("Radial Velocity mode not understood")
 
-        smod, cmod = self.apply_radial_velocity_and_continuum(
+        smod, cmod = self.apply_radial_velocity_and_continuum_synth(
             wave,
             sme.spec,
             wmod,
@@ -759,10 +757,10 @@ class Synthesizer:
             sme.vrad_unc = np.asarray(vrad_unc)
             nlte_flags = dll.GetNLTEflags()
             if linelist_mode == 'auto':
-                sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags.astype(float)
+                sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags.astype(int)
             else:
                 sme.nlte.flags = nlte_flags
-                sme.linelist._lines.loc[~sme.line_ion_mask, 'nlte_flag'] = nlte_flags.astype(float)
+                sme.linelist._lines.loc[~sme.line_ion_mask, 'nlte_flag'] = nlte_flags.astype(int)
 
         # Store the adaptive wavelength grid for the future
 
