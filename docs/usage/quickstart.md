@@ -24,7 +24,7 @@ from pysme.abund import Abund
 sme.teff, sme.logg, sme.monh = 5700, 4.4, -0.1
 sme.abund = Abund.solar()
 ```
-* LineList (linelist), e.g. from VALD database
+* LineList (linelist), e.g. from [VALD database](https://vald.astro.uu.se/)
 ```py
 from pysme.linelist.vald import ValdFile
 vald = ValdFile("linelist.lin")
@@ -60,7 +60,15 @@ They can be inserted into the SME structure with:
 sme.wave = wave
 sme.spec = flux
 sme.uncs = uncertainties
+sme.mask = np.ones(len(Spectrum), dtype=int)
 ```
+
+- The wavelength is always given in Angstrom. 
+- Note that the observation may be split into segments (orders etc). 
+        - Then Wavelength is a list of arrays [segment1, segment2, ...], and the same applies to spec, uncs, and mask.
+- The mask values are: 0: bad pixel, 1: line pixel, 2: continuum pixel, 4: vrad pixel
+        - The masks are additive, i.e., you can set mask value to 5 for line and vrad pixel.
+        - Note that the dtype of sme.mask must be int.
 
 Then the `solve` function can be used to find the best fit solution:
 ```py

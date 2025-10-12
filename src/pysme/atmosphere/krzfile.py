@@ -41,7 +41,7 @@ class KrzFile(Atmosphere):
 
     def load(self, filename):
         """
-        Load data from disk
+        Load data from krz files. The code will automatically judge the file source of ATLAS or MARCS.
 
         Parameters
         ----------
@@ -51,78 +51,143 @@ class KrzFile(Atmosphere):
 
         kB, mH = 1.380649e-16, 1.6735575e-24
         
+        # Judge the file source: ATLAS or MARCS
         with open(filename, "r") as file:
             header = file.readline() + file.readline()
-            opacity = file.readline()
-            _ = file.readline()
-            # Read in abund
-            abun_list = ''
-            temp = file.readline()
-            abun_list = abun_list + temp[42:].replace('E', '')
-            temp = file.readline()
-            while 'ABUNDANCE CHANGE' in temp:
-                abun_list = abun_list + temp[temp.index('ABUNDANCE CHANGE')+16:]
-                temp = file.readline()
-            abun = np.array(abun_list.split(), dtype='f').reshape(int(len(abun_list.split())/2), 2)
-            # Read the model lines
-            temp = temp.split()
-            model_lines = []
-            for _ in range(int(temp[2])):
-                model_lines.append(file.readline().split())
-            model_lines = np.array(model_lines, dtype=np.float64)
 
-        try:
-            self.monh = float(re.findall(r"\[\s*([+-]?\d+(?:\.\d*)?)\s*\]", header)[0])
-        except IndexError:
-            self.monh = 0.0
+        if "MARCS" in header:
+            # File format:
+            # 1..2 lines header
+            # 3 line opacity
+            # 4..13 elemntal abundances
+            # 14.. Table data for each layer
+            #    Rhox Temp XNE XNA RHO
 
-        try:
-            self.vturb = float(re.findall(r"VTURB=?\s*(\d)", header, flags=re.I)[0])
-        except IndexError:
-            self.vturb = 0
+            with open(filename, "r") as file:
+                header1 = file.readline()
+                header2 = file.readline()
+                opacity = file.readline()
+                abund = [file.readline() for _ in range(10)]
+                table = file.readlines()
 
-        try:
-            self.lonh = float(re.findall(r"L/H=?\s*(\d+.?\d*)", header, flags=re.I)[0])
-        except IndexError:
-            self.lonh = 0
+            # Combine the first two lines
+            header = header1 + header2
+            # Parse header
+            # vturb
 
-        self.teff = float(re.findall(r"T ?EFF=?\s*(\d+.?\d*)", header, flags=re.I)[0])
-        self.logg = float(
-            re.findall(r"GRAV(ITY)?=?\s*(\d+.?\d*)", header, flags=re.I)[0][1]
-        )
+            try:
+                self.vturb = float(re.findall(r"VTURB=?\s*(\d)", header, flags=re.I)[0])
+            except IndexError:
+                self.vturb = 0
 
-        self.depth = 'RHOX'
-        self.geom = "pp"
-        self.wlstd = 5000.
+            try:
+                self.lonh = float(re.findall(r"L/H=?\s*(\d+.?\d*)", header, flags=re.I)[0])
+            except IndexError:
+                self.lonh = 0
 
-        # parse opacity
-        opacity_numbers = re.findall(r'OPACITY IFOP\s+([\d\s]+)', opacity, flags=re.I)
-        if opacity_numbers:
-            self.opflag = np.array([int(k) for k in opacity_numbers[0].split()])
-        else:
-            # Back to old weird method
+            self.teff = float(re.findall(r"T ?EFF=?\s*(\d+.?\d*)", header, flags=re.I)[0])
+            self.logg = float(
+                re.findall(r"GRAV(ITY)?=?\s*(\d+.?\d*)", header, flags=re.I)[0][1]
+            )
+
+            model_type = re.findall(r"MODEL TYPE=?\s*(\d)", header, flags=re.I)[0]
+            self.model_type = int(model_type)
+
+            model_type_key = {0: "rhox", 1: "tau", 3: "sph"}
+            self.depth = model_type_key[self.model_type]
+            self.geom = "pp"
+
+            self.wlstd = float(re.findall(r"WLSTD=?\s*(\d+.?\d*)", header, flags=re.I)[0])
+            # parse opacity
             i = opacity.find("-")
             opacity = opacity[:i].split()
             self.opflag = np.array([int(k) for k in opacity])
 
-        # parse abundance
-        pattern = abun[:, 1]
-        self.abund = Abund(monh=self.monh, pattern=pattern, type="kurucz")
+            # parse abundance
+            pattern = np.genfromtxt(abund).flatten()[:-1]
+            pattern[1] = 10 ** pattern[1]
+            self.abund = Abund(monh=0, pattern=pattern, type="sme")
 
-        # parse table
-        self.table = model_lines
-        self.rhox = self.table[:, 0]
-        self.temp = self.table[:, 1]
-        self.xne = self.table[:, 3]
-        self.P_gas = self.table[:, 2]
-        self.xna = self.P_gas / (kB * self.temp)
-        atmoic_mu = self.get_mu_from_abund()
-        self.rho = self.P_gas * atmoic_mu * mH / (kB * self.temp)
+            # parse table
+            self.table = np.genfromtxt(table, delimiter=",", usecols=(0, 1, 2, 3, 4))
+            self.rhox = self.table[:, 0]
+            self.temp = self.table[:, 1]
+            self.xne = self.table[:, 2]
+            self.xna = self.table[:, 3]
+            self.rho = self.table[:, 4]
+        else:
+            with open(filename, "r") as file:
+                header = file.readline() + file.readline()
+                opacity = file.readline()
+                _ = file.readline()
+                # Read in abund
+                abun_list = ''
+                temp = file.readline()
+                abun_list = abun_list + temp[42:].replace('E', '')
+                temp = file.readline()
+                while 'ABUNDANCE CHANGE' in temp:
+                    abun_list = abun_list + temp[temp.index('ABUNDANCE CHANGE')+16:]
+                    temp = file.readline()
+                abun = np.array(abun_list.split(), dtype='f').reshape(int(len(abun_list.split())/2), 2)
+                # Read the model lines
+                temp = temp.split()
+                model_lines = []
+                for _ in range(int(temp[2])):
+                    model_lines.append(file.readline().split())
+                model_lines = np.array(model_lines, dtype=np.float64)
 
-        # This is not used since it is tau_ross instead of tau_5000
-        # self.abross = self.table[:, 4]
-        # self.tau    = np.zeros_like(self.rhox)
-        # self.tau[1:] = np.cumsum(0.5 * (self.abross[1:] + self.abross[:-1]) * np.diff(self.rhox))
+            try:
+                self.monh = float(re.findall(r"\[\s*([+-]?\d+(?:\.\d*)?)\s*\]", header)[0])
+            except IndexError:
+                self.monh = 0.0
+
+            try:
+                self.vturb = float(re.findall(r"VTURB=?\s*(\d)", header, flags=re.I)[0])
+            except IndexError:
+                self.vturb = 0
+
+            try:
+                self.lonh = float(re.findall(r"L/H=?\s*(\d+.?\d*)", header, flags=re.I)[0])
+            except IndexError:
+                self.lonh = 0
+
+            self.teff = float(re.findall(r"T ?EFF=?\s*(\d+.?\d*)", header, flags=re.I)[0])
+            self.logg = float(
+                re.findall(r"GRAV(ITY)?=?\s*(\d+.?\d*)", header, flags=re.I)[0][1]
+            )
+
+            self.depth = 'RHOX'
+            self.geom = "pp"
+            self.wlstd = 5000.
+
+            # parse opacity
+            opacity_numbers = re.findall(r'OPACITY IFOP\s+([\d\s]+)', opacity, flags=re.I)
+            if opacity_numbers:
+                self.opflag = np.array([int(k) for k in opacity_numbers[0].split()])
+            else:
+                # Back to old weird method
+                i = opacity.find("-")
+                opacity = opacity[:i].split()
+                self.opflag = np.array([int(k) for k in opacity])
+
+            # parse abundance
+            pattern = abun[:, 1]
+            self.abund = Abund(monh=self.monh, pattern=pattern, type="kurucz")
+
+            # parse table
+            self.table = model_lines
+            self.rhox = self.table[:, 0]
+            self.temp = self.table[:, 1]
+            self.xne = self.table[:, 3]
+            self.P_gas = self.table[:, 2]
+            self.xna = self.P_gas / (kB * self.temp)
+            atmoic_mu = self.get_mu_from_abund()
+            self.rho = self.P_gas * atmoic_mu * mH / (kB * self.temp)
+
+            # This is not used since it is tau_ross instead of tau_5000
+            # self.abross = self.table[:, 4]
+            # self.tau    = np.zeros_like(self.rhox)
+            # self.tau[1:] = np.cumsum(0.5 * (self.abross[1:] + self.abross[:-1]) * np.diff(self.rhox))
 
     def get_mu_from_abund(self):
         abun = self.abund.pattern

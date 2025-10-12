@@ -739,7 +739,7 @@ def load_cdr_to_linelist(sme, filepath):
 
     n_lines_total = len(sme.linelist)
 
-    arr_cdepth = np.zeros(n_lines_total, dtype=np.float32) + 0.0001
+    arr_cdepth = np.zeros(n_lines_total, dtype=np.float32)
     arr_lrs =  sme.linelist['wlcent'] - 0.3
     arr_lre =  sme.linelist['wlcent'] + 0.3
 
@@ -750,3 +750,85 @@ def load_cdr_to_linelist(sme, filepath):
     sme.linelist._lines['central_depth'] = arr_cdepth
     sme.linelist._lines['line_range_s']  = arr_lrs
     sme.linelist._lines['line_range_e']  = arr_lre
+
+import numpy as np
+
+def save_bool_sparse(path, arr):
+    """
+    Save a boolean NumPy array in a space-efficient sparse format.
+
+    This function stores only the flat indices of True values together with the
+    original array shape and size, then writes them into a compressed .npz file.
+    It is typically more space-efficient than bit-packing when the number of
+    True entries k is much smaller than N/8, where N is the total number of
+    elements in the array.
+
+    Parameters
+    ----------
+    path : str
+        Output file path (e.g., 'mask_sparse.npz').
+    arr : numpy.ndarray
+        Boolean array to save. It will be flattened in C-order to obtain the
+        index list (via `np.flatnonzero(arr)`).
+
+    Notes
+    -----
+    - The file contains three arrays: 'idx' (1D int indices of True entries),
+      'shape' (the original array shape), and 'size' (the total number of elements).
+    - The array is reconstructed by creating a flat boolean array of length 'size',
+      setting True at positions 'idx', and reshaping to 'shape'.
+    - For dense masks, consider bit-packing or direct compression instead.
+
+    Examples
+    --------
+    >>> mask = np.array([[True, False], [False, True]], dtype=bool)
+    >>> save_bool_sparse('mask_sparse.npz', mask)
+    """
+    arr = np.asarray(arr, dtype=bool)
+    idx = np.flatnonzero(arr)
+    np.savez_compressed(path, idx=idx, shape=arr.shape, size=arr.size)
+
+
+def load_bool_sparse(path):
+    """
+    Load a boolean array previously saved with `save_bool_sparse`.
+
+    This reconstructs the full boolean mask by allocating a flat array of length
+    'size', marking positions in 'idx' as True, and reshaping to 'shape'.
+
+    Parameters
+    ----------
+    path : str
+        Path to the .npz file produced by `save_bool_sparse`.
+
+    Returns
+    -------
+    numpy.ndarray
+        The reconstructed boolean array with the original shape.
+
+    Raises
+    ------
+    KeyError
+        If the file does not contain the expected keys: 'idx', 'shape', 'size'.
+
+    Notes
+    -----
+    - The reconstruction uses C-order (row-major) flattening/reshaping, matching
+      the behavior of `np.flatnonzero` used during saving.
+    - This function assumes the file structure created by `save_bool_sparse`
+      (i.e., it is not a general-purpose sparse loader).
+
+    Examples
+    --------
+    >>> mask_restored = load_bool_sparse('mask_sparse.npz')
+    >>> mask_restored.dtype
+    dtype('bool')
+    """
+    z = np.load(path)
+    idx = z['idx']
+    shape = tuple(z['shape'])
+    size = int(z['size'])
+
+    out = np.zeros(size, dtype=bool)
+    out[idx] = True
+    return out.reshape(shape)

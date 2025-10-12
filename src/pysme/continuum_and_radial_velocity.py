@@ -766,6 +766,9 @@ def apply_radial_velocity(wave, wmod, smod, vrad, segments, copy=False):
 
 
 def apply_continuum(wave, smod, cwave, cscale, cscale_type, segments, copy=False):
+    '''
+    Apply continuum to the spectra according to cscale.
+    '''
     if copy:
         smod = np.copy(smod)
 

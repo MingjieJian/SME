@@ -21,7 +21,6 @@ from .util import show_progress_bars
 
 logger = logging.getLogger(__name__)
 
-
 class DirectAccessFile:
     """
     This function reads a single record from binary file that has the following
@@ -375,9 +374,7 @@ class Grid:
             species = self.directory["spec"].astype("U")
         except KeyError:
             logger.warning(
-                "Could not find 'species' field in NLTE file %s. Assuming they are all '%s 1'.",
-                self.grid_name,
-                self.elem,
+                f"Could not find 'species' field in NLTE file {self.grid_name}. Assuming they are all '{self.elem} 1'."
             )
             species = np.full(conf.shape, "%s 1" % self.elem)
             pass
@@ -563,7 +560,7 @@ class Grid:
             np.ndindex(nabund, nteff, ngrav, nfeh),
             desc="Loading NLTE %s" % self.elem,
             total=nabund * nteff * ngrav * nfeh,
-            disable=~show_progress_bars,
+            disable=not show_progress_bars,
         ):
             model = self._keys[f[l], g[k], t[j], x[i]]
             try:
@@ -1096,7 +1093,10 @@ class NLTE(Collection):
 
     # @profile
     def update_coefficients(self, sme, dll, lfs_nlte):
-        """pass departure coefficients to C library"""
+        """pass departure coefficients to C library;
+            If bmat, linerefs, lineindices are given, use those instead of recalculating them 
+            and the code will not check if the line level, energy is matched or not. 
+        """
 
         # Reset the departure coefficient every time, just to be sure
         # It would be more efficient to just Update the values, but this doesn't take long
@@ -1154,11 +1154,8 @@ class NLTE(Collection):
                     # Make sure both levels have corrections available
                     if lr[0] != -1 and lr[1] != -1:
                         dll.InputDepartureCoefficients(bmat[:, lr], li)
-
         for elem in marked_for_removal:
             self.remove_nlte(elem)
-
-        # flags = sme_synth.GetNLTEflags(sme.linelist)
 
         return sme
 

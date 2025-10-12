@@ -212,7 +212,7 @@ class Synthesizer:
         return segments
 
     @staticmethod
-    def apply_radial_velocity_and_continuum(
+    def apply_radial_velocity_and_continuum_synth(
         wave, spec, wmod, smod, cmod, vrad, cscale, cscale_type, segments
     ):
         smod = apply_radial_velocity_and_continuum(
@@ -562,6 +562,7 @@ class Synthesizer:
         sme : SME_Struct
             same sme structure with synthetic spectrum in sme.smod
         """
+
         # Prepare 3D NLTE H profile corrections
         if sme.tdnlte_H:
         #     sme.tdnlte_H_correction = self.get_H_3dnlte_correction(sme)
@@ -591,9 +592,7 @@ class Synthesizer:
                 mask |= sme.uncs[i] == 0
                 sme.mask[i][mask] = MASK_VALUES.BAD
 
-        if radial_velocity_mode != "robust" and (
-            "cscale" not in sme or "vrad" not in sme
-        ):
+        if radial_velocity_mode != "robust" and ("cscale" not in sme or "vrad" not in sme):
             radial_velocity_mode = "robust"
 
         segments = self.check_segments(sme, segments)
@@ -620,10 +619,10 @@ class Synthesizer:
 
         # Calculate the line central depth and line range if necessary
         if linelist_mode == 'auto':
-            logger.info(f'linelist mode: {linelist_mode}')
+            # logger.info(f'linelist mode: {linelist_mode}')
             if sme.linelist.cdr_paras is None or not {'central_depth', 'line_range_s', 'line_range_e'}.issubset(sme.linelist._lines.columns) or np.abs(sme.linelist.cdr_paras[0]-sme.teff) >= sme.linelist.cdr_paras_thres['teff'] or (np.abs(sme.linelist.cdr_paras[1]-sme.logg) >= sme.linelist.cdr_paras_thres['logg']) or (np.abs(sme.linelist.cdr_paras[2]-sme.monh) >= sme.linelist.cdr_paras_thres['monh']) or cdr_create:
                 logger.info(f'Updating linelist central depth and line range.')
-                sme = self.update_cdr(sme, cdr_database=cdr_database, cdr_create=cdr_create)
+                sme = self.update_cdr(sme, cdr_database=cdr_database, cdr_create=cdr_create, show_progress_bars=show_progress_bars)
 
         # Input Model data to C library
         dll.SetLibraryPath()
@@ -658,7 +657,7 @@ class Synthesizer:
         #   Interpolate onto geomspaced wavelength grid
         #   Apply instrumental and turbulence broadening
         sme.first_segment = True
-        for il in tqdm(segments, desc="Segments", leave=True, disable=~show_progress_bars):
+        for il in tqdm(segments, desc="Segments", leave=True, disable=not show_progress_bars):
             wmod[il], smod[il], cmod[il], central_depth[il], line_range[il], opacity[il] = self.synthesize_segment(
                 sme,
                 il,
@@ -698,7 +697,7 @@ class Synthesizer:
         else:
             raise ValueError("Radial Velocity mode not understood")
 
-        smod, cmod = self.apply_radial_velocity_and_continuum(
+        smod, cmod = self.apply_radial_velocity_and_continuum_synth(
             wave,
             sme.spec,
             wmod,
@@ -758,10 +757,10 @@ class Synthesizer:
             sme.vrad_unc = np.asarray(vrad_unc)
             nlte_flags = dll.GetNLTEflags()
             if linelist_mode == 'auto':
-                sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags.astype(float)
+                sme.linelist._lines.loc[sme.linelist._lines['use_indices'], 'nlte_flag'] = nlte_flags.astype(int)
             else:
                 sme.nlte.flags = nlte_flags
-                sme.linelist._lines.loc[~sme.line_ion_mask, 'nlte_flag'] = nlte_flags.astype(float)
+                sme.linelist._lines.loc[~sme.line_ion_mask, 'nlte_flag'] = nlte_flags.astype(int)
 
         # Store the adaptive wavelength grid for the future
 
@@ -933,12 +932,18 @@ class Synthesizer:
             opacity = None
 
         if contribution_function:
-            sme.contribution_function[segment] = dll.GetContributionfunction(sme.mu, sme.wave[segment])
+            cf = dll.GetContributionfunction(sme.mu, sme.wave[segment])[0]
+            # Temporary: set the cf in outermost to be the same as the second one in rhox,
+            #            to avoid impractical numbers
+            cf[..., 0] = cf[..., 1]
+            if not sme.specific_intensities_only:
+                cf = np.array([self.integrate_flux(sme.mu, cf_mu, 1, 0, 0) for cf_mu in cf])
+            sme.contribution_function[segment] = cf
 
         sme.first_segment = False
         return wint, sint, cint, central_depth, line_range, opacity
     
-    def update_cdr(self, sme, cdr_database=None, cdr_create=False, cdr_grid_overwrite=False, mode='linear', dims=['teff', 'logg', 'monh']):
+    def update_cdr(self, sme, cdr_database=None, cdr_create=False, cdr_grid_overwrite=False, mode='linear', dims=['teff', 'logg', 'monh'], show_progress_bars=show_progress_bars):
         '''
         Update or get the central depth and wavelength range of a line list. This version separate the parallel and non-parallel mode completely.
         Author: Mingjie Jian
@@ -958,10 +963,10 @@ class Synthesizer:
         
         if cdr_database is not None:
             # cdr_database is provided, use it to update the central depth and line range
-            self._interpolate_or_compute_and_update_linelist(sme, cdr_database, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite, mode=mode, dims=dims)
+            self._interpolate_or_compute_and_update_linelist(sme, cdr_database, cdr_create=cdr_create, cdr_grid_overwrite=cdr_grid_overwrite, mode=mode, dims=dims, show_progress_bars=show_progress_bars)
             return sme
 
-        logger.info('Using calculation to update central depth and line range.')
+        logger.info('[cdr] Using calculation to update central depth and line range.')
         sub_sme_init = SME_Structure()
         exclude_keys = ['_wave', '_synth', '_spec', '_uncs', '_mask', '_SME_Structure__wran', '_normalize_by_continuum', '_specific_intensities_only', '_telluric', '__cont', '_linelist', '_fitparameters', '_fitresults']
         for key, value in sme.__dict__.items():
@@ -970,7 +975,7 @@ class Synthesizer:
         sub_sme_init.wave = np.arange(5000, 5010, 1)
 
         if not parallel:
-            for i in tqdm(range(N_chunk)):
+            for i in tqdm(range(N_chunk), disable=not show_progress_bars):
                 sub_sme_init.linelist = sub_linelist[i]
                 sub_sme_init = self.synthesize_spectrum(sub_sme_init)
                 if i == 0:
@@ -984,12 +989,12 @@ class Synthesizer:
             for i in range(N_chunk):
                 sub_sme.append(deepcopy(sub_sme_init))
                 sub_sme[i].linelist = sub_linelist[i]
-        
+
             if pysme_out:
-                sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+                sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs, disable=not show_progress_bars)
             else:
                 with redirect_stdout(open(f"/dev/null", 'w')):
-                    sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs)
+                    sub_sme = pqdm(sub_sme, self.synthesize_spectrum, n_jobs=n_jobs, disable=not show_progress_bars)
             
             for i in range(N_chunk):
                 sub_linelist[i] = sub_sme[i].linelist
@@ -1025,7 +1030,7 @@ class Synthesizer:
     def _interpolate_or_compute_and_update_linelist(
         self, sme, cdr_database, cdepth_decimals=4, cdepth_thres=0,
         range_decimals=2, cdr_create=False, cdr_grid_overwrite=False,
-        mode='linear', dims=['teff', 'logg', 'monh']
+        mode='linear', dims=['teff', 'logg', 'monh'], show_progress_bars=False
     ):
         teff, logg, monh, vmic = sme.teff, sme.logg, sme.monh, sme.vmic
         param = np.array([teff, logg, monh, vmic])
@@ -1060,13 +1065,13 @@ class Synthesizer:
                 delaunay = Delaunay(filtered_grid)
                 simplex_index = delaunay.find_simplex(param)
                 if simplex_index >= 0:
-                    logger.info('[CDF] Using linear interpolation from grid database.')
+                    logger.info('[cdr] Using linear interpolation from grid database.')
                     vertex_indices = delaunay.simplices[simplex_index]
                     vertices = filtered_grid[vertex_indices]
 
                     n_lines_total = len(sme.linelist)
                     interpolated_arrays = {
-                        'central_depth': np.zeros(n_lines_total, dtype=np.float32) + 0.0001,
+                        'central_depth': np.zeros(n_lines_total, dtype=np.float32),
                         'line_range_s':  sme.linelist['wlcent'] - 0.3,
                         'line_range_e':  sme.linelist['wlcent'] + 0.3,
                     }
@@ -1077,8 +1082,10 @@ class Synthesizer:
                         iloc = data[:, 0].astype(int)
 
                         arr_cdepth = np.zeros(n_lines_total, dtype=np.float32)
-                        arr_lrs    = np.full(n_lines_total, np.nan, dtype=np.float32)
-                        arr_lre    = np.full(n_lines_total, np.nan, dtype=np.float32)
+                        # arr_lrs    = np.full(n_lines_total, np.nan, dtype=np.float32)
+                        # arr_lre    = np.full(n_lines_total, np.nan, dtype=np.float32)
+                        arr_lrs    = sme.linelist['wlcent'] - 0.3
+                        arr_lre    = sme.linelist['wlcent'] + 0.3
                         arr_cdepth[iloc] = data[:, 1]
                         arr_lrs[iloc]    = data[:, 2]
                         arr_lre[iloc]    = data[:, 3]
@@ -1137,7 +1144,7 @@ class Synthesizer:
             logger.info(f"{fname} exists and cdr_grid_overwrite is false, skipping generating cdr grid.")
         else:
             logger.info("[CDF] Fallback: recomputing line properties.")
-            self.update_cdr(sme, cdr_database=None)
+            self.update_cdr(sme, cdr_database=None, show_progress_bars=show_progress_bars)
 
             mask = sme.linelist['central_depth'] > cdepth_thres
             filtered_df = sme.linelist[['central_depth', 'line_range_s', 'line_range_e']][mask]
@@ -1150,6 +1157,174 @@ class Synthesizer:
             line_info = np.column_stack([filtered_iloc, depth, range_s, range_e])
             logger.info(f'Saving {fname} to database.')
             np.savez_compressed(full_path, line_info=line_info)
+
+    def keep_mask_by_cumulative_depth(self, depths: np.ndarray, threshold=0.01):
+        """
+        Vectorised version for a single wavelength bin.
+        """
+        order = depths.argsort()                    # weakest → strongest
+        sorted_depths = depths[order]
+        cumsum = sorted_depths.cumsum()
+        cut = np.searchsorted(cumsum, threshold, side="right")
+        drop_sorted = np.zeros_like(sorted_depths, dtype=bool)
+        drop_sorted[:cut] = True                    # drop the weakest until threshold reached
+        drop_mask = np.zeros_like(depths, dtype=bool)
+        drop_mask[order] = drop_sorted              # map back to input order
+        return ~drop_mask                           # True = keep
+
+
+    def flag_strong_lines_by_bins(wl, depth, bin_width=0.2, threshold=0.001):
+        wl = np.asarray(wl)
+        depth = np.asarray(depth)
+
+        # 1) 计算 bin_idx
+        wl_min, wl_max = wl.min(), wl.max()
+        edges = np.arange(wl_min, wl_max + bin_width, bin_width)
+        bin_idx = np.searchsorted(edges, wl, side="right") - 1
+        # 假设 bin_idx ∈ [0, n_bins-1]；若有越界需先 clip
+
+        # 2) 一次性分组排序：先按 bin，再按 depth（升序：弱→强）
+        order = np.lexsort((depth, bin_idx))     # 主键：bin_idx；次键：depth
+        bin_sorted = bin_idx[order]
+        depth_sorted = depth[order]
+
+        # 3) 找到每个 bin 的切片边界
+        starts = np.r_[0, np.flatnonzero(np.diff(bin_sorted)) + 1]
+        ends   = np.r_[starts[1:], len(depth_sorted)]
+
+        # 4) 在“按强度升序”的每个切片内，丢弃前 cut 个（累计和<=threshold）
+        keep_sorted = np.empty_like(depth_sorted, dtype=bool)
+        csum = np.cumsum(depth_sorted)  # 全局前缀和，便于O(1)求任一切片的局部cumsum
+
+        for s, e in zip(starts, ends):
+            if s == e:  # 空bin（通常不会被lexsort产生，但留作保护）
+                continue
+            base = csum[s-1] if s > 0 else 0.0
+            # 该bin内局部累计和
+            local = csum[s:e] - base
+            # 需要丢弃的“最弱”个数
+            cut = np.searchsorted(local, threshold, side="right")
+            # 弱的前 cut 个 False，其余 True
+            keep_sorted[s:e] = True
+            if cut > 0:
+                keep_sorted[s:s+cut] = False
+
+        # 5) 映射回原顺序
+        keep = np.empty_like(keep_sorted)
+        keep[order] = keep_sorted
+        return keep
+
+    def flag_strong_lines_by_bins_old(self, df, bin_width=0.2, threshold=0.01, wl_col="wlcent", depth_col="central_depth", out_col="keep_mask", show_progress_bars=show_progress_bars):
+        """
+        Add a boolean 'keep_mask' column to the VALD line list indicating strong / weak lines.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            VALD line list containing wavelength and depth columns.
+        bin_width : float, default 0.2
+            Width of each wavelength bin (same unit as wl_col, typically Å).
+        threshold : float, default 0.01
+            Maximum cumulative depth to discard within each bin.
+        wl_col : str, default "wlcent"
+            Column name for line‐center wavelength.
+        depth_col : str, default "central_depth"
+            Column name for line‐center depth.
+        out_col : str, default "keep_mask"
+            Name of the boolean column to write into `df`.
+
+        Returns
+        -------
+        pandas.Series (dtype=bool)
+            Boolean mask aligned to `df.index`; True → strong line.
+        """
+        # ----- 0.  Prepare numpy views -----
+        wl = df[wl_col].to_numpy()
+        depth = df[depth_col].to_numpy()
+        n_lines = len(df)
+
+        # ----- 1.  Build wavelength bin edges -----
+        wl_min, wl_max = wl.min(), wl.max()
+        edges = np.arange(wl_min, wl_max + bin_width, bin_width)  # rightmost edge inclusive
+        n_bins = len(edges) - 1
+
+        # Bin index for each line: 0 ... n_bins-1
+        bin_idx = np.searchsorted(edges, wl, side="right") - 1
+
+        # ----- 2.  Allocate output mask -----
+        keep_mask = np.zeros(n_lines, dtype=bool)
+
+        # ----- 3.  Loop over bins, apply cumulative-depth filter -----
+        for b in tqdm(range(n_bins), disable=not show_progress_bars):
+            idx = np.where(bin_idx == b)[0]         # indices of lines in this bin
+            if idx.size == 0:                       # empty bin -> skip
+                continue
+            keep_mask[idx] = self.keep_mask_by_cumulative_depth(
+                depth[idx],
+                threshold=threshold
+            )
+
+        # ----- 4.  Save into DataFrame & return -----
+        df[out_col] = keep_mask
+        return df[out_col]
+    
+    def flag_strong_lines_by_database(
+    self, sme, cdr_keep_database, dims=['teff', 'logg', 'monh'], mode='or'
+    ):
+        teff, logg, monh, vmic = sme.teff, sme.logg, sme.monh, sme.vmic
+        param = np.array([teff, logg, monh, vmic])
+        param_grid, fname_map = _load_all_grid_points(cdr_keep_database)
+
+        if len(dims) == 3 and len(param_grid) > 0:
+            # Remove vmic in the grid
+            # vmic_mask = np.isclose(param_grid[:, -1], fixed_vmic)
+            param_grid = param_grid[:, :-1]
+
+            fname_map = {
+                k[:-1]: v for k, v in fname_map.items()
+            }
+            param = param[:-1]
+
+        if len(param_grid) > 0:
+
+            thres = sme.linelist.cdr_paras_thres
+            
+            lower = np.array([teff - thres['teff'], logg - thres['logg'], monh - thres['monh'], vmic - thres['vmic']])
+            upper = np.array([teff + thres['teff'], logg + thres['logg'], monh + thres['monh'], vmic + thres['vmic']])
+
+            if len(dims) == 3:
+                lower = lower[:-1]
+                upper = upper[:-1]
+
+            in_box_mask = np.all((param_grid >= lower) & (param_grid <= upper), axis=1)
+            filtered_grid = param_grid[in_box_mask]
+
+            if mode == 'or' and len(filtered_grid) >= len(dims)+1:
+                delaunay = Delaunay(filtered_grid)
+                simplex_index = delaunay.find_simplex(param)
+                if simplex_index >= 0:
+                    logger.info('[cdr] Combining the bool array of strong lines.')
+                    vertex_indices = delaunay.simplices[simplex_index]
+                    vertices = filtered_grid[vertex_indices]
+
+                    strong_array = []
+                    for pt in vertices:
+                        logger.info(f'Using bool {fname_map[tuple(pt)]}')
+                        strong_array.append(util.load_bool_sparse(os.path.join(cdr_keep_database, fname_map[tuple(pt)])))
+                    strong_final = np.logical_or.reduce(strong_array)
+                    sme.linelist._lines['strong'] = strong_final
+                    return
+
+            elif mode == 'nearest' and len(filtered_grid) > 0:
+                # box 内找到最近的 grid 点
+                dists = cdist(filtered_grid, param[None, :])
+                i_nearest = np.argmin(dists)
+                nearest_pt = filtered_grid[i_nearest]
+                logger.info(f'[cdr] Using nearest grid point {nearest_pt} in box for direct assignment.')
+
+                strong_final = util.load_bool_sparse(os.path.join(cdr_keep_database, fname_map[tuple(nearest_pt)]))
+                sme.linelist._lines['strong'] = strong_final
+                return
 
     def get_H_3dnlte_correction_rbf(self, sme):
         """
