@@ -815,7 +815,7 @@ class Grid:
                 mindiff = diff[idx2]
                 # difference needs to be smaller than some limit?
                 if mindiff < energy_diff_limit:
-                    return np.where(idx_map[idx][idx2])[0][0]
+                    return np.where(np.atleast_1d(idx_map[idx][idx2]))[0][0]
                 else:
                     return -1
             # 5. If everything fails return nothing

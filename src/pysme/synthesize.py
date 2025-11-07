@@ -1172,7 +1172,7 @@ class Synthesizer:
         drop_mask[order] = drop_sorted              # map back to input order
         return ~drop_mask                           # True = keep
 
-
+    @staticmethod
     def flag_strong_lines_by_bins(wl, depth, bin_width=0.2, threshold=0.001):
         wl = np.asarray(wl)
         depth = np.asarray(depth)
