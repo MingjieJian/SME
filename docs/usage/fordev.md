@@ -132,6 +132,11 @@ For each segment i:
 
 This variable determines how the cscale and vrad being assigned, and can be specfied manually.
 
+## NLTE grid
+
+If you create your own NLTE departure coefficient grid following the current public grid to a `DirectAccess` file and you use the `nlte.DirectAccess.wrtie` function, note that the `wrtie` and `read` code changes the shape of b-grid, tau and rhox. 
+Some extra test is needed to clear the situation. 
+
 ## IDLSME
 
 ### Installation
