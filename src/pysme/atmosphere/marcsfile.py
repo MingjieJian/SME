@@ -227,7 +227,7 @@ class MarcsAtmosphere(Atmosphere):
         if self.geom.upper() == 'SPH':
             self.radius = data["radius"]
         self.depth = 'RHOX' if self.geom.upper() == 'SPH' else 'TAU'  # spherical models should depth calculate using RHOX
-        self.interp = 'TAU'  # not sure this is needed for embedded models
+        self.interp = 'RHOX'  # not sure this is needed for embedded models
         self.vturb = data["vturb"]
 
         self.abund = Abund(monh=data["monh"], pattern=data["abund_inclmonh"].to_numpy()[0]-data["monh"], type="H=12")
