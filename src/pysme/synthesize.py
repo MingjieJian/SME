@@ -68,6 +68,80 @@ def _load_all_grid_points(cdr_folder):
                 fname_map[key] = fname
     return np.array(param_list), fname_map
 
+def _load_mask_and_ranges_from_compressed(full_path, wlcent, n_lines_total):
+    """
+    Load the strong-line mask and wavelength ranges from a compressed CDR grid file.
+
+    The compressed file is expected to contain:
+        - mask_bits     : 1D uint8 array, bit-packed boolean mask of strong lines
+        - unique_widths : 1D float32 array, all distinct line_width values in this grid
+        - codes         : 1D uint8/uint16/uint32 array, indices into unique_widths
+                          corresponding to the strong lines. The order of `codes`
+                          matches the order of strong-line indices given by:
+                          strong_idx = np.nonzero(mask_full)[0]
+
+    For each strong line i:
+        width[i] = unique_widths[codes[i]]
+        line_range_s[i] = wlcent[i] - 0.5 * width[i]
+        line_range_e[i] = wlcent[i] + 0.5 * width[i]
+
+    All non-strong lines are assigned NaN in line_range_s/e.
+
+    Parameters
+    ----------
+    full_path : str
+        Path to the compressed npz file for a single grid point.
+    wlcent : array-like, shape (n_lines_total,)
+        Central wavelengths of all lines in the global line list.
+    n_lines_total : int
+        Total number of lines in the line list.
+
+    Returns
+    -------
+    mask_full : np.ndarray, dtype=bool, shape (n_lines_total,)
+        Boolean array marking which lines are strong in this grid.
+    line_range_s : np.ndarray, dtype=float32, shape (n_lines_total,)
+        Start wavelength of the line range for each line (NaN for non-strong lines).
+    line_range_e : np.ndarray, dtype=float32, shape (n_lines_total,)
+        End wavelength of the line range for each line (NaN for non-strong lines).
+    """
+    data = np.load(full_path)
+    mask_bits     = data["mask_bits"]
+    unique_widths = data["unique_widths"]
+    codes         = data["codes"]
+    n_lines_total = int(data["n_lines_total"])
+
+    # 1) Unpack bit-packed mask into a full boolean array
+    mask_full = np.unpackbits(mask_bits).astype(bool)[:n_lines_total]
+    if mask_full.size < n_lines_total:
+        raise ValueError(
+            f"{full_path}: unpacked mask length {mask_full.size} < n_lines_total={n_lines_total}. "
+            "Please ensure the compressed database matches the current VALD linelist."
+        )
+    mask_full = mask_full[:n_lines_total]
+
+    # 2) Indices of strong lines and their corresponding widths
+    strong_idx = np.nonzero(mask_full)[0]
+    widths     = unique_widths[codes]  # one-to-one with strong_idx
+
+    # 3) Reconstruct line_range_s/e from central wavelengths and widths
+    wlcent = np.asarray(wlcent)
+    if wlcent.size != n_lines_total:
+        raise ValueError(
+            f"{full_path}: wlcent length {wlcent.size} != n_lines_total={n_lines_total}"
+        )
+
+    wl_strong = wlcent[strong_idx]
+    s_vals = (wl_strong - 0.5 * widths).astype(np.float32)
+    e_vals = (wl_strong + 0.5 * widths).astype(np.float32)
+
+    line_range_s = np.full(n_lines_total, np.nan, dtype=np.float32)
+    line_range_e = np.full(n_lines_total, np.nan, dtype=np.float32)
+    line_range_s[strong_idx] = s_vals
+    line_range_e[strong_idx] = e_vals
+
+    return mask_full, line_range_s, line_range_e
+
 class Synthesizer:
     def __init__(self, config=None, lfs_atmo=None, lfs_nlte=None, dll=None):
         self.config, self.lfs_atmo, self.lfs_nlte = setup_lfs(
@@ -1267,64 +1341,160 @@ class Synthesizer:
         # ----- 4.  Save into DataFrame & return -----
         df[out_col] = keep_mask
         return df[out_col]
-    
     def flag_strong_lines_by_database(
-    self, sme, cdr_keep_database, dims=['teff', 'logg', 'monh'], mode='or'
+        self, sme, cdr_negligibe_database, dims=['teff', 'logg', 'monh'], mode='or'
     ):
+        """
+        Flag strong lines for the current star using the compressed CDR strong-line database,
+        and write both the 'strong' flag and the corresponding line_range_s / line_range_e
+        into the SME linelist.
+
+        The compressed CDR database is assumed to contain one npz file per grid point in
+        `cdr_negligibe_database`. Each file should include:
+            - mask_bits     : 1D uint8 array, bit-packed boolean mask for strong lines
+            - unique_widths : 1D float32 array, distinct line_width values in this grid
+            - codes         : 1D uint8/uint16/uint32 array indexing unique_widths,
+                              ordered consistently with the strong-line indices.
+
+        Interpolation modes
+        -------------------
+        mode : {'or', 'nearest'}
+            'or':
+                Within the parameter box around the current star, construct a Delaunay
+                triangulation in the selected parameter dimensions (dims). If the
+                current parameter lies inside a simplex, take all vertices of that simplex:
+                  - Combine their strong masks using a logical OR across vertices.
+                  - For line_range_s/e, take the union of ranges: s = nanmin(s_i),
+                    e = nanmax(e_i) across vertices (ignoring NaNs).
+            'nearest':
+                Within the parameter box, find the single nearest grid point and directly
+                use its strong mask and line_range_s/e.
+
+        Parameters
+        ----------
+        sme : SME_Structure
+            The current SME object (stellar parameters and linelist are taken from here).
+        cdr_negligibe_database : str
+            Directory containing the compressed CDR grid files.
+        dims : list of str, default ['teff', 'logg', 'monh']
+            Parameter dimensions used for interpolation. If length is 3, vmic is ignored.
+        mode : {'or', 'nearest'}, default 'or'
+            Interpolation / combination strategy as described above.
+        """
         teff, logg, monh, vmic = sme.teff, sme.logg, sme.monh, sme.vmic
-        param = np.array([teff, logg, monh, vmic])
-        param_grid, fname_map = _load_all_grid_points(cdr_keep_database)
+        param = np.array([teff, logg, monh, vmic], dtype=float)
 
+        # Load all grid points and map (teff, logg, monh, vmic) -> filename
+        param_grid, fname_map = _load_all_grid_points(cdr_negligibe_database)
+
+        # In 3D mode, drop vmic dimension from grid and from the parameter vector
         if len(dims) == 3 and len(param_grid) > 0:
-            # Remove vmic in the grid
-            # vmic_mask = np.isclose(param_grid[:, -1], fixed_vmic)
             param_grid = param_grid[:, :-1]
-
-            fname_map = {
-                k[:-1]: v for k, v in fname_map.items()
-            }
+            fname_map = {k[:-1]: v for k, v in fname_map.items()}
             param = param[:-1]
 
-        if len(param_grid) > 0:
+        if len(param_grid) == 0:
+            logger.warning("[cdr] Compressed strong-line database is empty; "
+                           "flag_strong_lines_by_database will be skipped.")
+            return
 
-            thres = sme.linelist.cdr_paras_thres
-            
-            lower = np.array([teff - thres['teff'], logg - thres['logg'], monh - thres['monh'], vmic - thres['vmic']])
-            upper = np.array([teff + thres['teff'], logg + thres['logg'], monh + thres['monh'], vmic + thres['vmic']])
+        # ----- Select grid points within the parameter box around the current star -----
+        thres = sme.linelist.cdr_paras_thres
+        lower = np.array(
+            [teff - thres['teff'], logg - thres['logg'], monh - thres['monh'], vmic - thres['vmic']],
+            dtype=float
+        )
+        upper = np.array(
+            [teff + thres['teff'], logg + thres['logg'], monh + thres['monh'], vmic + thres['vmic']],
+            dtype=float
+        )
 
-            if len(dims) == 3:
-                lower = lower[:-1]
-                upper = upper[:-1]
+        if len(dims) == 3:
+            lower = lower[:-1]
+            upper = upper[:-1]
 
-            in_box_mask = np.all((param_grid >= lower) & (param_grid <= upper), axis=1)
-            filtered_grid = param_grid[in_box_mask]
+        in_box_mask = np.all((param_grid >= lower) & (param_grid <= upper), axis=1)
+        filtered_grid = param_grid[in_box_mask]
 
-            if mode == 'or' and len(filtered_grid) >= len(dims)+1:
-                delaunay = Delaunay(filtered_grid)
-                simplex_index = delaunay.find_simplex(param)
-                if simplex_index >= 0:
-                    logger.info('[cdr] Combining the bool array of strong lines.')
-                    vertex_indices = delaunay.simplices[simplex_index]
-                    vertices = filtered_grid[vertex_indices]
+        if filtered_grid.size == 0:
+            logger.warning("[cdr] No grid points found within the parameter box; "
+                           "cannot flag strong lines from database.")
+            return
 
-                    strong_array = []
-                    for pt in vertices:
-                        logger.info(f'Using bool {fname_map[tuple(pt)]}')
-                        strong_array.append(util.load_bool_sparse(os.path.join(cdr_keep_database, fname_map[tuple(pt)])))
-                    strong_final = np.logical_or.reduce(strong_array)
-                    sme.linelist._lines['strong'] = strong_final
-                    return
+        n_lines_total = len(sme.linelist)
+        wlcent = sme.linelist['wlcent']
 
-            elif mode == 'nearest' and len(filtered_grid) > 0:
-                # box 内找到最近的 grid 点
-                dists = cdist(filtered_grid, param[None, :])
-                i_nearest = np.argmin(dists)
-                nearest_pt = filtered_grid[i_nearest]
-                logger.info(f'[cdr] Using nearest grid point {nearest_pt} in box for direct assignment.')
+        # ----- mode = 'or': use simplex vertices and OR-combine masks -----
+        if mode == 'or' and filtered_grid.shape[0] >= len(dims) + 1:
+            from scipy.spatial import Delaunay
 
-                strong_final = util.load_bool_sparse(os.path.join(cdr_keep_database, fname_map[tuple(nearest_pt)]))
-                sme.linelist._lines['strong'] = strong_final
+            delaunay = Delaunay(filtered_grid)
+            simplex_index = delaunay.find_simplex(param)
+
+            if simplex_index >= 0:
+                logger.info("[cdr] Combining strong-line masks and line ranges from "
+                            "compressed database (simplex OR).")
+                vertex_indices = delaunay.simplices[simplex_index]
+                vertices = filtered_grid[vertex_indices]
+
+                masks = []
+                lrs_list = []
+                lre_list = []
+
+                for pt in vertices:
+                    fname = fname_map[tuple(pt)]
+                    full_path = os.path.join(cdr_negligibe_database, fname)
+                    logger.info(f"[cdr] Using compressed strong-line file {fname} for OR-combination.")
+                    mask_v, lrs_v, lre_v = _load_mask_and_ranges_from_compressed(
+                        full_path, wlcent, n_lines_total
+                    )
+                    masks.append(mask_v)
+                    lrs_list.append(lrs_v)
+                    lre_list.append(lre_v)
+
+                masks_arr = np.vstack(masks)               # (n_vertex, N_lines)
+                strong_final = np.any(masks_arr, axis=0)   # logical OR across vertices
+
+                # For line_range_s/e, take the union across vertices:
+                # s = min over vertices (ignoring NaN), e = max over vertices.
+                lrs_arr = np.vstack(lrs_list)
+                lre_arr = np.vstack(lre_list)
+
+                line_range_s_final = np.nanmin(lrs_arr, axis=0)
+                line_range_e_final = np.nanmax(lre_arr, axis=0)
+
+                sme.linelist._lines['strong']       = strong_final
+                sme.linelist._lines['line_range_s'] = line_range_s_final
+                sme.linelist._lines['line_range_e'] = line_range_e_final
                 return
+
+            # If the parameter is not inside any simplex, fall back to nearest strategy
+            logger.warning("[cdr] Target parameter is not inside any simplex; "
+                           "falling back to 'nearest' strategy.")
+            mode = 'nearest'
+
+        # ----- mode = 'nearest': use the nearest grid point within the box -----
+        if mode == 'nearest':
+            dists = cdist(filtered_grid, param[None, :])
+            i_nearest = np.argmin(dists)
+            nearest_pt = filtered_grid[i_nearest]
+            logger.info(f"[cdr] Using nearest grid point {nearest_pt} in box for "
+                        "strong-line mask and line ranges.")
+
+            fname = fname_map[tuple(nearest_pt)]
+            full_path = os.path.join(cdr_negligibe_database, fname)
+            strong_final, line_range_s_final, line_range_e_final = _load_mask_and_ranges_from_compressed(
+                full_path, wlcent, n_lines_total
+            )
+
+            sme.linelist._lines['strong']       = strong_final
+            sme.linelist._lines['line_range_s'] = line_range_s_final
+            sme.linelist._lines['line_range_e'] = line_range_e_final
+            return
+
+        logger.warning("[cdr] flag_strong_lines_by_database: no valid interpolation/nearest "
+                       "strategy found; 'strong' and line_range_s/e were not set.")
+        return
 
     def get_H_3dnlte_correction_rbf(self, sme):
         """

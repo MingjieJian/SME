@@ -832,3 +832,99 @@ def load_bool_sparse(path):
     out = np.zeros(size, dtype=bool)
     out[idx] = True
     return out.reshape(shape)
+
+def compress_one_grid(line_info,
+                      strong_idx,
+                      n_lines_total=None,
+                      verbose: bool = False):
+    """
+    对一个格点:
+    - 使用 strong_idx 裁剪 line_info（只保留强线）
+    - 计算 line_width = e - s，并做字典编码: unique_widths + codes
+    - 从 strong_idx 构造完整 bool mask, 再 bit-pack 成 uint8 串
+
+    自动根据数据推断 n_lines_total，避免 off-by-one。
+    """
+
+    # ---- 0. 标准化 strong_idx：转 int64 + 排序（并去重）----
+    strong_idx = np.asarray(strong_idx, dtype=np.int64).ravel()
+    strong_idx = np.unique(strong_idx)   # 保证升序 & 无重复
+
+    # ---- 自动推断谱线总数 n_lines_total ----
+    idx_col = line_info[:, 0].astype(np.int64)
+    max_idx = max(idx_col.max(), strong_idx.max())
+
+    if n_lines_total is None:
+        n_lines_total = int(max_idx) + 1
+    else:
+        if max_idx >= n_lines_total:
+            if verbose:
+                print(f"[注意] 调整 n_lines_total: {n_lines_total} -> {int(max_idx)+1}")
+            n_lines_total = int(max_idx) + 1
+
+    if verbose:
+        print(f"推断 n_lines_total = {n_lines_total}")
+        print(f"strong_idx 范围: [{strong_idx.min()}, {strong_idx.max()}]")
+        print(f"index 列范围   : [{idx_col.min()}, {idx_col.max()}]")
+
+    # ---- 1. 裁剪 line_info 到强线 ----
+    if np.array_equal(idx_col, np.arange(line_info.shape[0], dtype=np.int64)):
+        # index 列 = 行号，直接 fancy index
+        line_info_strong = line_info[strong_idx]
+    else:
+        order = np.argsort(idx_col)
+        idx_sorted = idx_col[order]
+        pos = np.searchsorted(idx_sorted, strong_idx)
+        rows = order[pos]
+        line_info_strong = line_info[rows]
+
+    M_active = line_info_strong.shape[0]
+    if verbose:
+        print(f"强线数 M_active = {M_active}")
+
+    # ---- 2. 计算 line_width 并做字典编码 ----
+    s = line_info_strong[:, 2]
+    e = line_info_strong[:, 3]
+    line_width = e - s
+
+    unique_widths, inv = np.unique(line_width, return_inverse=True)
+    K = unique_widths.size
+
+    if K <= 256:
+        code_dtype = np.uint8
+    elif K <= 65536:
+        code_dtype = np.uint16
+    else:
+        code_dtype = np.uint32
+
+    codes = inv.astype(code_dtype)
+    unique_widths_f32 = unique_widths.astype(np.float32)
+
+    if verbose:
+        print(f"不同 line_width 取值 K = {K} -> codes dtype = {code_dtype.__name__}")
+
+    # ---- 3. 构造 bool mask 并 bitpack ----
+    mask = np.zeros(n_lines_total, dtype=bool)
+    mask[strong_idx] = True
+    mask_bits = np.packbits(mask)
+
+    if verbose:
+        print(f"mask_bits.shape = {mask_bits.shape}, "
+              f"约 {mask_bits.nbytes/1024**2:.3f} MiB/格点")
+
+    return mask_bits, unique_widths_f32, codes
+
+def save_compressed_grid(mask_bits, unique_widths, codes, n_lines_total, out_path):
+    """
+    把一个格点压缩后的数据保存为 npz:
+    - mask_bits: uint8 bit-packed bool mask
+    - unique_widths: float32
+    - codes: uint8/uint16/uint32
+    """
+    np.savez_compressed(
+        out_path,
+        mask_bits=mask_bits,
+        unique_widths=unique_widths,
+        codes=codes,
+        n_lines_total=np.array(n_lines_total, dtype=np.int32)
+    )
