@@ -156,7 +156,7 @@ class Synthesizer:
         # This stores a reference to the currently used sme structure, so we only log it once
         self.known_sme = None
         self.update_cdr_switch = False
-        logger.info("Don't forget to cite your sources. Use sme.citation()")
+        # logger.info("Don't forget to cite your sources. Use sme.citation()")
 
     def get_atmosphere(self, sme):
         """

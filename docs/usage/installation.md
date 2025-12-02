@@ -14,6 +14,11 @@ Currently PySME is tested with Python verion 3.9-3.13.
     - `pip install pysme-astro`
 
 ```{warning}
+- PySME requires the pre-compled C++/Fortran SME library to run. Currently we deliver SME library with Linux and Mac version; for Windows users, we recommend to use WSL and hence the Linux version. 
+- The files (mainly atmosphere models and NLTE departure coefficnent grids) required by PySME will be saved inside `~/.sme/`. These files can be large thus if your home directory is small, we recommend to create a softlink for `~/.sme`.
+```
+
+```{warning}
 PySME requires the pre-compled C++/Fortran SME library to run. Currently we deliver SME library with Linux and Mac version; for Windows users, we recommend to use WSL and hence the Linux version. 
 ```
 
