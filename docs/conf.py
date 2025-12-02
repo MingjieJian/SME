@@ -29,7 +29,7 @@ author = "Jeff Valenti, Nikolai Piskunov, Mingjie Jian, Ansgar Wehrhahn"
 # The short X.Y version
 version = ""
 # The full version, including alpha/beta/rc tags
-release = "0.4.198"
+release = "0.6.20"
 
 
 # -- General configuration ---------------------------------------------------

@@ -137,6 +137,15 @@ This variable determines how the cscale and vrad being assigned, and can be spec
 If you create your own NLTE departure coefficient grid following the current public grid to a `DirectAccess` file and you use the `nlte.DirectAccess.wrtie` function, note that the `wrtie` and `read` code changes the shape of b-grid, tau and rhox. 
 Some extra test is needed to clear the situation. 
 
+## SME
+
+### `Trasf` function
+
+1. `AutoIonization`
+2. Calculate Line center opacity using `LINEOPAC`.
+3. Calculate Line contribution limits using `OPMTRX`.
+    - Step 2 and 3 go through all the input lines
+
 ## IDLSME
 
 ### Installation

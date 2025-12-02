@@ -18,36 +18,34 @@ parameters, which is usually the same as that of the sme structure,
 but can be different, if for example the atmosphere is embedded, i.e.
 fixed, or has not been calculated yet.
 
-The atmopshere object has the following fields
+The atmopshere object has the following fields:
 
-- **`teff`**: Effective Temperature in Kelvin  
-- **`logg`**: Surface Gravity in log(cgs)  
-- **`monh`**: Metallicity relative to the individual abundances  
-- **`abund`**: The individual abundances (see [abund](#abund))  
-- **`vsini`**: Projected Rotational velocity in km/s  
-- **`vmic`**: Microturbulence velocity in km/s  
-- **`vmac`**: Macroturbulence velocity in km/s  
-- **`vturb`**: Turbulent velocity in km/s  
-- **`lonh`**: Mixing length   
-- **`source`**: Filename of the atmosphere grid  
-- **`depth`**:  
-  The depth scale to use for calculations.  
-  Either RHOX or TAU  
-- **`interp`**:  
-  The depth scale to use for interpolation.  
-  Either RHOX or TAU  
-- **`geom`**:  
-  The geometry of the atmosphere. Either Plane  
-  Parallel `'PP'` or Spherical `'SPH'`  
-- **`method`**:  
-  The method to use for interpolation. Either `'grid'`  
-  for a model grid or `'embedded'` if only a single  
-  atmosphere is given.  
-- **`rhox`**: 'Column density' depth scale  
-- **`tau`**: 'Optical depth' depth scale  
-- **`temp`**: Temperature profile  
-- **`xna`**: Number density of atoms, ions, and molecules in each depth  
-- **`xne`**: Number density of electrons in each depth  
+|Field name|Description|Allowed values or [Unit]|
+|:---:|:---:|:---:|
+|`teff`|Effective Temperature|[K]|
+|`logg`|Surface Gravity|[log(cgs)]|
+|`monh`|Metallicity||
+|`abund`|The individual abundances (see [abund](#abund))||
+|`vsini`|Projected Rotational velocity|[km/s]|
+|`vmic`|Microturbulence velocity|[km/s]|
+|`vmac`|Macroturbulence velocity|[km/s]|
+|`source`|Filename of the atmosphere grid|see [lfs](lfs.md)|
+|`depth`|The depth scale to use for calculations.|`RHOX` or `TAU`|
+|`interp`|The depth scale to use for interpolation.|`RHOX` or `TAU`|
+|`geom`|The geometry of the atmosphere.|Plane Parallel `'PP'` or Spherical `'SPH'`|
+|`method`|The method to use for interpolation|`'grid'` for a model grid or `'embedded'` if only a single atmosphere is given|
+|`rhox`|Mass column at each tabulated depth in the atmosphere|[$\mathrm{g~cm^{-2}}$]|
+|`tau`|Continuum optical depth at each tabulated depth in the atmosphere||
+|`temp`|Temperature at each tabulated depth in the atmosphere|[K]|
+|`xna`|Atomic number density (including atomic components of molecules) at each tabulated depth in the atmosphere.|[$\mathrm{cm^{-3}}$]|
+|`xne`|Electron number density at each tabulated depth in the atmosphere|[$\mathrm{cm^{-3}}$]|
+|`rho`|Mass density at each tabulated depth in the atmosphere.|[$\mathrm{g~cm^{-3}}$]|
+|`height`|Height above or below `radius` at each tabulated depth in a spherical atmosphere.|[cm]|
+|`radius`|Stellar radius corresponding to `height` of zero in a spherical atmosphere|[cm]|
+|`vturb`|Turbulent velocity used to generate the atmosphere|[km/s]|
+|`lonh`|Ratio of mixing length to pressure scale height (`/H) used to generate the atmosphere.||
+|`wlstd`|Wavelength for continuum optical depth scale.|Å, Default value: 5000Å|
+|`opflag`|Flags that indicate whether to enable various opacity packages during the radiative transfer calculation||
 
 ## Grid atmospheres 
 
