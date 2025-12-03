@@ -683,7 +683,8 @@ class Synthesizer:
         opacity = [[] for _ in range(n_segments)]
         if contribution_function:
             sme.contribution_function = [[] for _ in range(n_segments)]
-        sme.linelist._lines['nlte_flag'] = -1
+        if updateStructure:
+            sme.linelist._lines['nlte_flag'] = -1
 
         # If wavelengths are already defined use those as output
         if "wave" in sme:
@@ -706,7 +707,7 @@ class Synthesizer:
                 v_broad = np.sqrt(sme.vmac**2 + sme.vsini**2 + (clight/sme.ipres)**2)
                 for i in range(sme.nseg):
                     line_indices |= (sme.linelist['line_range_e'] > sme.wran[i][0] * (1 - vbroad_expend_ratio*v_broad/clight)) & (sme.linelist['line_range_s'] < sme.wran[i][1] * (1 + vbroad_expend_ratio*v_broad/clight))
-                line_indices &= sme.linelist['central_depth'] > sme.cdr_depth_thres
+                line_indices &= self.flag_strong_lines_by_bins(sme.linelist['wlcent'], sme.linelist['central_depth'])
                 sme.linelist._lines['use_indices'] = line_indices
                 line_ion_mask = dll.InputLineList(sme.linelist[line_indices])
             else:

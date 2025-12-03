@@ -600,8 +600,7 @@ class SME_Solver:
             if sme.vrad_flag in ["fix", "none"]:
                 sme.vrad_flag = "whole"
                 logger.info(
-                    "Removed fit parameter 'vrad', instead set radial velocity flag to %s",
-                    sme.vrad_flag,
+                    f"Removed fit parameter 'vrad', instead set radial velocity flag to {sme.vrad_flag}"
                 )
 
         if "cont" in param_names:
@@ -734,9 +733,9 @@ class SME_Solver:
             )
 
         # Setup LineList only once (Mingjie: not needed?)
-        dll = self.synthesizer.get_dll()
-        dll.SetLibraryPath()
-        _ = dll.InputLineList(sme.linelist)
+        # dll = self.synthesizer.get_dll()
+        # dll.SetLibraryPath()
+        # _ = dll.InputLineList(sme.linelist)
 
         # Do the heavy lifting
         if self.nparam > 0:
@@ -794,7 +793,7 @@ class SME_Solver:
             # We could try to reuse the already calculated synthetic spectrum (if it already exists)
             # However it is much lower resolution then the newly synthethized one (usually)
             # Therefore the radial velocity wont be as good as when redoing the whole thing
-            sme = self.synthesizer.synthesize_spectrum(sme, segments)
+            sme = self.synthesizer.synthesize_spectrum(sme, segments, linelist_mode=linelist_mode)
         else:
             raise ValueError("No fit parameters given")
 
