@@ -26,6 +26,7 @@ from matplotlib.path import Path
 
 from . import __version__ as smeversion
 from .sme_synth import SME_DLL
+from .config import Config
 
 logger = logging.getLogger(__name__)
 show_progress_bars = False
@@ -434,7 +435,8 @@ def parse_args():
     args = parser.parse_args()
     return args.sme, args.vald, args.fitparameters
 
-H_lineprof = pd.read_csv(os.path.expanduser("~/.sme/hlineprof/lineprof.dat"), sep=' +', names=['Teff', 'logg', 'Fe_H', 'nu', 'wl', 'wlair', 'mu', 'wmu', 'Ic', 'I'], engine='python')
+config = Config()
+H_lineprof = pd.read_csv(os.path.expanduser(f"{config['data.hlineprof']}/lineprof.dat"), sep=' +', names=['Teff', 'logg', 'Fe_H', 'nu', 'wl', 'wlair', 'mu', 'wmu', 'Ic', 'I'], engine='python')
 H_lineprof['wl'] *= 10
 H_lineprof['wl'] = vac2air(H_lineprof['wl'])
 

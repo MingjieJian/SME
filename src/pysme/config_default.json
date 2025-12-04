@@ -1,5 +1,6 @@
 {
     "data.file_server": "https://sme.astro.uu.se/atmos",
+    "data.hlineprof": "~/.sme/hlineprof",
     "data.atmospheres": "~/.sme/atmospheres",
     "data.nlte_grids": "~/.sme/nlte_grids",
     "data.cache.atmospheres": "~/.sme/atmospheres/cache",
