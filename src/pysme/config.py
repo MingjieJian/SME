@@ -6,9 +6,10 @@ At the moment it is only used for the LargeFileStorage
 import json
 import logging
 from os.path import dirname, exists, expanduser, join
+from util import get_data_filepath
 
 logger = logging.getLogger(__name__)
-
+SME_DATA_PATH = get_data_filepath()
 
 def _requires_load(func):
     def func_new(self, *args, **kwargs):
@@ -20,7 +21,7 @@ def _requires_load(func):
 
 
 class Config:
-    def __init__(self, fname="~/.sme/config.json"):
+    def __init__(self, fname=f"{SME_DATA_PATH}/.sme/config.json"):
         self.filename = fname
         self._cfg = None
 

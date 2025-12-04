@@ -40,6 +40,18 @@ def enable_progress_bars():
     show_progress_bars = True
 
 
+def get_data_filepath():
+    """
+    Read from envrionment variable where the .sme file is located. 
+    If environment variable not defined, then use home as default.
+    """
+    ENV_PATH = os.getenv('SME_DATA_PATH')
+    if ENV_PATH is None:
+        return '~'
+    else:
+        return ENV_PATH
+
+
 @contextlib.contextmanager
 def print_to_log():
     original_print = builtins.print
@@ -434,7 +446,7 @@ def parse_args():
     args = parser.parse_args()
     return args.sme, args.vald, args.fitparameters
 
-H_lineprof = pd.read_csv(os.path.expanduser("~/.sme/hlineprof/lineprof.dat"), sep=' +', names=['Teff', 'logg', 'Fe_H', 'nu', 'wl', 'wlair', 'mu', 'wmu', 'Ic', 'I'], engine='python')
+H_lineprof = pd.read_csv(os.path.expanduser(f"{get_data_filepath()}/.sme/hlineprof/lineprof.dat"), sep=' +', names=['Teff', 'logg', 'Fe_H', 'nu', 'wl', 'wlair', 'mu', 'wmu', 'Ic', 'I'], engine='python')
 H_lineprof['wl'] *= 10
 H_lineprof['wl'] = vac2air(H_lineprof['wl'])
 
@@ -928,3 +940,6 @@ def save_compressed_grid(mask_bits, unique_widths, codes, n_lines_total, out_pat
         codes=codes,
         n_lines_total=np.array(n_lines_total, dtype=np.int32)
     )
+
+
+
