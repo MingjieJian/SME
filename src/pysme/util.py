@@ -26,6 +26,7 @@ from matplotlib.path import Path
 
 from . import __version__ as smeversion
 from .sme_synth import SME_DLL
+from .config import Config
 
 logger = logging.getLogger(__name__)
 show_progress_bars = False
@@ -38,13 +39,6 @@ def disable_progress_bars():
 def enable_progress_bars():
     global show_progress_bars
     show_progress_bars = True
-
-
-# Read from envrionment variable where the .sme file is located. 
-# If environment variable not defined, then use home as default.
-SME_DATA_PATH = os.getenv('SME_DATA_PATH')
-if SME_DATA_PATH is None:
-    SME_DATA_PATH = '~'
 
 
 @contextlib.contextmanager
@@ -441,7 +435,8 @@ def parse_args():
     args = parser.parse_args()
     return args.sme, args.vald, args.fitparameters
 
-H_lineprof = pd.read_csv(os.path.expanduser(f"{SME_DATA_PATH}/.sme/hlineprof/lineprof.dat"), sep=' +', names=['Teff', 'logg', 'Fe_H', 'nu', 'wl', 'wlair', 'mu', 'wmu', 'Ic', 'I'], engine='python')
+config = Config()
+H_lineprof = pd.read_csv(os.path.expanduser(f"{config['data.hlineprof']}/lineprof.dat"), sep=' +', names=['Teff', 'logg', 'Fe_H', 'nu', 'wl', 'wlair', 'mu', 'wmu', 'Ic', 'I'], engine='python')
 H_lineprof['wl'] *= 10
 H_lineprof['wl'] = vac2air(H_lineprof['wl'])
 

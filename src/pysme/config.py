@@ -6,7 +6,6 @@ At the moment it is only used for the LargeFileStorage
 import json
 import logging
 from os.path import dirname, exists, expanduser, join
-from util import SME_DATA_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +19,13 @@ def _requires_load(func):
 
 
 class Config:
-    def __init__(self, fname=f"{SME_DATA_PATH}/.sme/config.json"):
+    def __init__(self, fname=f"~/.sme/config.json"):
         self.filename = fname
         self._cfg = None
 
         if not exists(self.filename):
             logger.info(
-                f"No cconfiguration file found at {self.filename}, using default values instead"
+                f"No configuration file found at {self.filename}, using default values instead"
             )
             self.filename = join(dirname(__file__), "config_default.json")
 
