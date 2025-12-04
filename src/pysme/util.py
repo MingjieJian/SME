@@ -930,6 +930,3 @@ def save_compressed_grid(mask_bits, unique_widths, codes, n_lines_total, out_pat
         codes=codes,
         n_lines_total=np.array(n_lines_total, dtype=np.int32)
     )
-
-
-
