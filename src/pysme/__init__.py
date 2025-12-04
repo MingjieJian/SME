@@ -13,7 +13,7 @@ import logging, os, sys
 import colorlog
 import tqdm
 from pathlib import Path
-from util import get_data_filepath
+from util import SME_DATA_PATH
 
 # numpy 2.x 兼容 shim：把内部实现映射回 numpy.lib.format
 try:
@@ -90,7 +90,6 @@ except Exception:
     libtools.compile_interface()
 
 # Extract the 3DNLTE H line profiles
-SME_DATA_PATH = get_data_filepath()
 if not os.path.exists(f'{SME_DATA_PATH}/.sme/hlineprof/lineprof.dat'):
     """Setup the H line profile data during package installation"""
     import gzip

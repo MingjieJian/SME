@@ -1,12 +1,9 @@
 import json, os
 from os.path import dirname, exists, expanduser, join
 from shutil import copy
-from util import get_data_filepath
+from util import SME_DATA_PATH
 
 def ensure_user_config():
-    # get the path to the .sme folder
-    SME_DATA_PATH = get_data_filepath()
-
     # Create folder structure for config files
     directory = expanduser(f"{SME_DATA_PATH}/.sme/")
     conf = join(directory, "config.json")

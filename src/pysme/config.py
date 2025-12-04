@@ -6,10 +6,9 @@ At the moment it is only used for the LargeFileStorage
 import json
 import logging
 from os.path import dirname, exists, expanduser, join
-from util import get_data_filepath
+from util import SME_DATA_PATH
 
 logger = logging.getLogger(__name__)
-SME_DATA_PATH = get_data_filepath()
 
 def _requires_load(func):
     def func_new(self, *args, **kwargs):
