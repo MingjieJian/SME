@@ -24,6 +24,7 @@ from astropy.utils.data import (
 from tqdm.auto import tqdm
 from tqdm.utils import CallbackIOWrapper
 
+from .config import Config
 from .util import show_progress_bars
 
 logger = logging.getLogger(__name__)
