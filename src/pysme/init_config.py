@@ -40,4 +40,4 @@ def ensure_user_config():
         copy(
             join(dirname(__file__), "datafiles_nlte.json"),
             expanduser(f"~/.sme/datafiles_nlte.json"),
-    )
+        )
